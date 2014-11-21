@@ -81,7 +81,7 @@ if __name__ == '__main__':
     log('> ... training the model')
     log('> r_cost = reconstruction cost, fe_cost = (approximate) value of free energy function') 
     # pre-train layer-wise
-    for i in xrange(start_layer_index, fg.ptr_layer_number):
+    for i in xrange(start_layer_index, cfg.ptr_layer_number):
         if (srbm.rbm_layers[i].is_gbrbm()):
             pretrain_lr = cfg.gbrbm_learning_rate
         else:
