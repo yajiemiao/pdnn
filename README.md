@@ -5,7 +5,7 @@ PDNN is a lightweight, easy-to-use deep learning toolkit developed under the [Th
 
 cmds     -- commands to conduct general-purpose deep learning  
 cmds2    -- additional commands specifically for ASR
-examples -- example setups
+examples -- example setups  
 io_func  -- data reading functions; model IO functions; model format conversion  
 layers   -- layers: convolution, fully-connected, denoising autoencoder, logistic regression, etc  
 learning -- learning algorithms  
