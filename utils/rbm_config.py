@@ -24,7 +24,7 @@ class RBMConfig():
     def __init__(self):
 
         # parameters related with training 
-        self.epochs = 10                 # number of training epochs for each layer
+        self.epochs = 5                  # number of training epochs for each layer
         self.batch_size = 128            # size of mini-batches
         self.gbrbm_learning_rate = 0.005 # learning rate for Gaussian-Bernoulli RBM
         self.learning_rate = 0.08        # learning rate for Bernoulli-Bernoulli RBM

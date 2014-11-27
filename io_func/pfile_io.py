@@ -24,38 +24,6 @@ import theano.tensor as T
 from utils.utils import string_2_bool
 from model_io import log
 
-def read_data_args(data_spec):
-    elements = data_spec.split(",")
-    pfile_path_list = glob.glob(elements[0])
-    dataset_args = {}
-    for i in range(1, len(elements)):
-        element = elements[i]
-        arg_value = element.split("=")
-        value = arg_value[1]
-        key = arg_value[0]
-        if key == 'partition':
-            dataset_args['partition'] = 1024 * 1024 * int(value.replace('m',''))
-        elif key == 'stream':
-            dataset_args['stream'] = string_2_bool(value) # not supported for now
-        elif key == 'random':
-            dataset_args['random'] = string_2_bool(value)
-        else:
-            dataset_args[key] = int(value)  # left context & right context; maybe different
-    return pfile_path_list, dataset_args
-
-def read_dataset(pfile_path_list, read_opts):
-    if read_opts['stream']:
-        pfile_reader = PfileDataReadStream(pfile_path_list, read_opts)
-    else:
-        pfile_reader = PfileDataRead(pfile_path_list, read_opts)
-    pfile_reader.initialize_read(first_time_reading = True)
-    
-    shared_xy = pfile_reader.make_shared()
-    shared_x, shared_y = shared_xy
-    shared_y = T.cast(shared_y, 'int32')
-
-    return pfile_reader, shared_xy, shared_x, shared_y
-
 class PfileDataRead(object):
 
     def __init__(self, pfile_path_list, read_opts):

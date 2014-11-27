@@ -26,10 +26,6 @@ import theano.tensor as T
 from theano.tensor.signal import downsample
 from theano.tensor.nnet import conv
 
-from theano.sandbox.cuda.basic_ops import gpu_contiguous
-from pylearn2.sandbox.cuda_convnet.filter_acts import FilterActs
-from pylearn2.sandbox.cuda_convnet.pool import MaxPool
-
 class ConvLayer(object):
     """Pool Layer of a convolutional network """
 
@@ -82,6 +78,10 @@ class ConvLayer(object):
 
         # convolve input feature maps with filters
         if use_fast:
+            from theano.sandbox.cuda.basic_ops import gpu_contiguous
+            from pylearn2.sandbox.cuda_convnet.filter_acts import FilterActs
+            from pylearn2.sandbox.cuda_convnet.pool import MaxPool
+
             input_shuffled = self.input.dimshuffle(1, 2, 3, 0) # bc01 to c01b
             filters_shuffled = self.W.dimshuffle(1, 2, 3, 0) # bc01 to c01b
             conv_op = FilterActs()
@@ -119,6 +119,8 @@ class ConvLayerForward(object):
                  poolsize=(1, 1), activation=T.nnet.sigmoid,
                  flatten = False, use_fast = False):
 
+        self.type = 'conv'
+
         self.input = input
 
         self.filter_shape = filter_shape
@@ -148,6 +150,10 @@ class ConvLayerForward(object):
 
         # convolve input feature maps with filters
         if use_fast:
+            from theano.sandbox.cuda.basic_ops import gpu_contiguous
+            from pylearn2.sandbox.cuda_convnet.filter_acts import FilterActs
+            from pylearn2.sandbox.cuda_convnet.pool import MaxPool
+       
             input_shuffled = self.input.dimshuffle(1, 2, 3, 0) # bc01 to c01b
             filters_shuffled = self.W.dimshuffle(1, 2, 3, 0) # bc01 to c01b
             conv_op = FilterActs()

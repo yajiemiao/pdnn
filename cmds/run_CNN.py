@@ -27,6 +27,7 @@ from theano.tensor.shared_randomstreams import RandomStreams
 
 from io_func.model_io import _nnet2file, _cfg2file, _file2nnet, _cnn2file, _file2cnn, log
 from utils.utils import parse_arguments
+from utils.learn_rates import _lrate2file, _file2lrate
 
 from utils.network_config import NetworkConfig
 from learning.sgd import train_sgd, validate_by_minibatch
@@ -66,7 +67,7 @@ if __name__ == '__main__':
     resume_training = False
     if os.path.exists(wdir + '/nnet.tmp') and os.path.exists(wdir + '/training_state.tmp'):
         resume_training = True
-        resume_lrate(cfg.lrate, wdir + '/training_state.tmp')
+        cfg.lrate = _file2lrate(wdir + '/training_state.tmp')
         log('> ... found nnet.tmp and training_state.tmp, now resume training from epoch ' + str(cfg.lrate.epoch))
 
     numpy_rng = numpy.random.RandomState(89677)
@@ -99,14 +100,7 @@ if __name__ == '__main__':
         # output nnet parameters and lrate, for training resume
         if cfg.lrate.epoch % cfg.model_save_step == 0:
             _nnet2file(cnn.layers, filename=wdir + '/nnet.tmp')
-            save_lrate(cfg.lrate, wdir + '/training_state.tmp')
-
-    # output conv layer config
-#    cnn.write_conv_config(wdir + '/conv.config')
-    # output the conv part
-#    _cnn2file(cnn.conv_layers, filename=conv_output_file)
-    # output the fully-connected part
-#    _nnet2file(cnn.fc_dnn.layers, filename=wdir + '/nnet.final.raw')
+            _lrate2file(cfg.lrate, wdir + '/training_state.tmp')
 
     # save the model and network configuration
     if cfg.param_output_file != '':

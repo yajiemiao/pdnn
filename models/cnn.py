@@ -173,7 +173,7 @@ class CNN_Forward(object):
                         activation = config['activation'], flatten = config['flatten'], use_fast = use_fast)
             self.conv_layers.append(conv_layer)
 
-    def build_out_function(self, feat_mats):
+    def build_out_function(self):
 
         feat = T.tensor4('feat')
         out_da = theano.function([feat], self.conv_layers[-1].output, updates = None, givens={self.x:feat}, on_unused_input='warn')

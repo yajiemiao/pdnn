@@ -1,4 +1,4 @@
-# Copyright 2013    Yajie Miao    Carnegie Mellon University 
+# Copyright 2014    Yajie Miao    Carnegie Mellon University 
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,88 +23,58 @@ import numpy
 
 import theano
 
+import struct
+
 # Functions to read and write Kaldi text-formatted .scp and .ark
 # Only used for generating convolution layer activation
 
 class KaldiReadIn(object):
 
-    def __init__(self, ark_path):
+    def __init__(self, scp_path):
 
-        self.ark_path = ark_path
-        self.infile = None
-
-    def open(self):
-        if self.ark_path.find('.gz') != -1:
-            self.infile = gzip.open(self.ark_path,"r")
-        else:
-            self.infile = open(self.ark_path,"r")
-
-    def next(self):
-        content = []
-        line = self.infile.readline()
-        # already at the final line
-        if line == '':
-            return '', None
-        elements = line.split(' ')
-        uttID = elements[0]
-        while 1:
-            line = self.infile.readline()
-            if line.find(' ]') != -1:
-                break
-            content.append(line.strip())
-        content.append(line.strip().replace(' ]', ''))
-
-        num_row = len(content)
-        num_col = len(content[0].split(' '))
+        self.scp_path = scp_path
+        self.scp_file_read = open(self.scp_path,"r")
         
-        feat_mat = numpy.ndarray(shape=(num_row,num_col), dtype=theano.config.floatX)
-        for i in xrange(num_row):
-            elements = content[i].split(' ')
-            for j in xrange(num_col):
-                feat_mat[i,j] = float(elements[j])
-        return uttID, feat_mat
+    def read_next_utt(self):
+        next_scp_line = self.scp_file_read.readline()
+        if next_scp_line == '' or next_scp_line == None:
+            return '', None
+        utt_id, path_pos = next_scp_line.replace('\n','').split(' ')
+        path, pos = path_pos.split(':')
 
-    def close(self):
-        self.infile.close()
+        ark_read_buffer = open(path, 'rb')
+        ark_read_buffer.seek(int(pos),0)
+        header = struct.unpack('<xcccc', ark_read_buffer.read(5))
+        if header[0] != "B":
+            print "Input .ark file is not binary"; exit(1)
+
+        rows = 0; cols= 0
+        m, rows = struct.unpack('<bi', ark_read_buffer.read(5))
+        n, cols = struct.unpack('<bi', ark_read_buffer.read(5))
+
+        tmp_mat = numpy.frombuffer(ark_read_buffer.read(rows * cols * 4), dtype=numpy.float32)
+        utt_mat = numpy.reshape(tmp_mat, (rows, cols))
+
+        ark_read_buffer.close()
+
+        return utt_id, utt_mat
+
 
 class KaldiWriteOut(object):
 
-    def __init__(self, scp_path, ark_path):
+    def __init__(self, ark_path):
 
         self.ark_path = ark_path
-        self.scp_path = scp_path
-        self.out_ark = None
-        self.out_scp = None
+        self.ark_file_write = open(ark_path,"wb")
 
-        self.offset = 0
-
-    def open(self):
-        self.out_ark = open(self.ark_path,"a")
-        self.out_scp = open(self.scp_path,"a")
-
-
-    def write(self, uttID, data):
-        start_offset = self.offset + len(uttID + ' ')
-        line = uttID + '  [\n'
-        self.out_ark.write(line)
-        self.offset += len(line)      
- 
-        num_row, num_col = data.shape
-        # write out ark 
-        for i in xrange(num_row):
-            line = ' '
-            for j in xrange(num_col):
-                line = line + ' ' + str(data[i,j])
-            if i == (num_row - 1):
-                line += ' ]'
-            line += '\n'
-            self.out_ark.write(line)
-            self.offset += len(line)
-
-        # write out scp
-        scp_out = uttID + ' ' + self.ark_path + ':' + str(start_offset)
-        self.out_scp.write(scp_out + '\n')
+    def write_kaldi_mat(self, utt_id, utt_mat):
+        utt_mat = numpy.asarray(utt_mat, dtype=numpy.float32)
+        rows, cols = utt_mat.shape
+        self.ark_file_write.write(struct.pack('<%ds'%(len(utt_id)), utt_id))
+        self.ark_file_write.write(struct.pack('<cxcccc', ' ','B','F','M',' '))
+        self.ark_file_write.write(struct.pack('<bi', 4, rows))
+        self.ark_file_write.write(struct.pack('<bi', 4, cols))
+        self.ark_file_write.write(utt_mat) 
 
     def close(self):
-        self.out_ark.close()
-        self.out_scp.close()
+        self.ark_file_write.close()

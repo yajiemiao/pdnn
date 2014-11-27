@@ -14,7 +14,7 @@
 # limitations under the License.
 
 import theano.tensor as T
-from learn_rates import LearningRateConstant, LearningRateExpDecay
+from learn_rates import LearningRateConstant, LearningRateExpDecay, LearningMinLrate, LearningFixedLrate
 
 def string_2_bool(string):
     if string == 'true':
@@ -33,7 +33,7 @@ def parse_arguments(arg_elements):
 def parse_lrate(lrate_string):
     elements = lrate_string.split(":")
     # 'D:0.08:0.5:0.05,0.05:15'
-    if elements[0] == 'D':  # ExpDecay
+    if elements[0] == 'D':  # NewBob
         if (len(elements) != 5):
             return None
         values = elements[3].split(',')
@@ -51,6 +51,32 @@ def parse_lrate(lrate_string):
             return None
         lrate = LearningRateConstant(learning_rate=float(elements[1]),
                                  epoch_num = int(elements[2]))
+        return lrate
+
+    # 'MD:0.08:0.5:0.05,0.0002:8'
+    if elements[0] == 'MD':  # Min-rate NewBob
+        if (len(elements) != 5):
+            return None
+        values = elements[3].split(',')
+        lrate = LearningMinLrate(start_rate=float(elements[1]),
+                                 scale_by = float(elements[2]),
+                                 min_derror_decay_start = float(values[0]),
+                                 min_lrate_stop = float(values[1]),
+                                 init_error = 100,
+                                 min_epoch_decay_start=int(elements[4]))
+        return lrate
+
+
+    # 'FD:0.08:0.5:10,6'
+    if elements[0] == 'FD':  # Min-rate NewBob
+        if (len(elements) != 4):
+            return None
+        values = elements[3].split(',')
+        lrate = LearningFixedLrate(start_rate=float(elements[1]),
+                                 scale_by = float(elements[2]),
+                                 decay_start_epoch = int(values[0]),
+                                 stop_after_deday_epoch = int(values[1]),
+                                 init_error = 100)
         return lrate
 
 def parse_conv_spec(conv_spec, batch_size):

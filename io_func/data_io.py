@@ -24,18 +24,27 @@ import theano.tensor as T
 from utils.utils import string_2_bool
 from pfile_io import PfileDataRead, PfileDataReadStream
 from pickle_io import PickleDataRead
+from kaldi_io import KaldiDataRead
 
 def read_data_args(data_spec):
     elements = data_spec.split(",")
     pfile_path_list = glob.glob(elements[0])
     dataset_args = {}
+    # default settings
+    dataset_args['type'] = 'pickle'
+    dataset_args['random'] = False
+    dataset_args['stream'] = False
+    dataset_args['partition'] = 1024 * 1024 * 600  # by default the partition size is 600m if stream is True
+
     # the type of the data: pickle, pfile   TO-DO: HDF5
     if '.pickle' in data_spec:
         dataset_args['type'] = 'pickle'
     elif '.pfile' in data_spec:
         dataset_args['type'] = 'pfile'
+    elif '.scp' in data_spec:
+        dataset_args['type'] = 'kaldi'
     else:
-        dataset_args['type'] = ''    
+        dataset_args['type'] = ''
 
     for i in range(1, len(elements)):
         element = elements[i]
@@ -48,8 +57,10 @@ def read_data_args(data_spec):
             dataset_args['stream'] = string_2_bool(value) # not supported for now
         elif key == 'random':
             dataset_args['random'] = string_2_bool(value)
+        elif key == 'label':
+            dataset_args['label'] = value
         else:
-            dataset_args[key] = int(value)  # left context & right context; maybe different
+            dataset_args[key] = value  # left context & right context; maybe different
     return pfile_path_list, dataset_args
 
 def read_dataset(file_path_list, read_opts):
@@ -60,6 +71,9 @@ def read_dataset(file_path_list, read_opts):
             data_reader = PfileDataReadStream(file_path_list, read_opts)
         else:
             data_reader = PfileDataRead(file_path_list, read_opts)
+    elif read_opts['type'] == 'kaldi':
+        data_reader = KaldiDataRead(file_path_list, read_opts)
+
     data_reader.initialize_read(first_time_reading = True)
     
     shared_xy = data_reader.make_shared()

@@ -30,7 +30,7 @@ from models.dropout_nnet import DNN_Dropout
 
 from io_func.model_io import _nnet2file, _cfg2file, _file2nnet, log
 from utils.utils import parse_arguments, parse_data_spec_mtl, parse_nnet_spec_mtl
-from utils.learn_rates import save_lrate, resume_lrate
+from utils.learn_rates import _lrate2file, _file2lrate
 
 from utils.network_config import NetworkConfig 
 from learning.sgd import validate_by_minibatch
@@ -110,7 +110,7 @@ if __name__ == '__main__':
         # check the working dir to decide whether it's resuming training; if yes, load the tmp network files for initialization
         if os.path.exists(wdir + '/nnet.tmp.task' + str(n)) and os.path.exists(wdir + '/training_state.tmp.task' + str(n)):
             resume_training = True; resume_tasks.append(n)
-            resume_lrate(cfg.lrate, wdir + '/training_state.tmp.task' + str(n))
+            cfg.lrate = _file2lrate(wdir + '/training_state.tmp.task' + str(n))
             log('> ... found nnet.tmp.task%d and training_state.tmp.task%d, now resume task%d training from epoch %d' % (n, n, n, cfg.lrate.epoch))
             _file2nnet(dnn.layers, filename = wdir + '/nnet.tmp.task' + str(n))
 
@@ -158,7 +158,7 @@ if __name__ == '__main__':
                 cfg.lrate.get_next_rate(current_error = 100 * numpy.mean(valid_error))
                 # output nnet parameters and lrate, for training resume
                 _nnet2file(dnn_array[n].layers, filename=wdir + '/nnet.tmp.task' + str(n))
-                save_lrate(cfg.lrate, wdir + '/training_state.tmp.task' + str(n))
+                _lrate2file(cfg.lrate, wdir + '/training_state.tmp.task' + str(n))
                 # if the lrate of a task decays to 0, training on this task terminates; it will be excluded from future training
                 if cfg.lrate.get_rate() == 0:
                     active_tasks_new.remove(n)

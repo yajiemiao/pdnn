@@ -1,4 +1,4 @@
-# Copyright 2013    Yajie Miao    Carnegie Mellon University
+# Copyright 2014    Yajie Miao    Carnegie Mellon University
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,6 +12,7 @@
 # MERCHANTABLITY OR NON-INFRINGEMENT.
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License.
+import cPickle
 
 class LearningRate(object):
 
@@ -95,6 +96,7 @@ class LearningRateExpDecay(LearningRate):
 class LearningMinLrate(LearningRate):
 
     def __init__(self, start_rate = 0.08, scale_by = 0.5,
+                 min_derror_decay_start = 0.05,
                  min_lrate_stop = 0.0002, init_error = 100,
                  decay=False, min_epoch_decay_start=15):
 
@@ -107,6 +109,7 @@ class LearningMinLrate(LearningRate):
         self.min_lrate_stop = min_lrate_stop
         self.lowest_error = init_error
 
+        self.min_derror_decay_start = min_derror_decay_start
         self.epoch = 1
         self.decay = decay
         self.min_epoch_decay_start = min_epoch_decay_start
@@ -128,12 +131,64 @@ class LearningMinLrate(LearningRate):
             else:
                 self.rate *= self.scale_by
         else:
-            if (self.epoch >= self.min_epoch_decay_start):
+            if (diff_error < self.min_derror_decay_start) and (self.epoch >= self.min_epoch_decay_start):
                 self.decay = True
                 self.rate *= self.scale_by
 
         self.epoch += 1
         return self.rate
+
+class LearningFixedLrate(LearningRate):
+
+    def __init__(self, start_rate = 0.08, scale_by = 0.5,
+                 decay_start_epoch = 10, init_error = 100,
+                 decay=False, stop_after_deday_epoch=6):
+
+        self.start_rate = start_rate
+        self.init_error = init_error
+
+        self.rate = start_rate
+        self.scale_by = scale_by
+        self.decay_start_epoch = decay_start_epoch
+        self.stop_after_deday_epoch = stop_after_deday_epoch
+        self.lowest_error = init_error
+
+        self.epoch = 1
+        self.decay = decay
+
+    def get_rate(self):
+        return self.rate
+
+    def get_next_rate(self, current_error):
+        diff_error = 0.0
+
+        diff_error = self.lowest_error - current_error
+
+        if (current_error < self.lowest_error):
+            self.lowest_error = current_error
+
+        if (self.decay):
+            if (self.epoch >= self.decay_start_epoch + self.stop_after_deday_epoch):
+                self.rate = 0.0
+            else:
+                self.rate *= self.scale_by
+        else:
+            if (self.epoch >= self.decay_start_epoch):
+                self.decay = True
+                self.rate *= self.scale_by
+
+        self.epoch += 1
+        return self.rate
+
+
+# save and load the learning rate class
+def _lrate2file(lrate, filename='file.out'):
+    with open(filename, "wb") as output:
+        cPickle.dump(lrate, output, cPickle.HIGHEST_PROTOCOL)
+
+def _file2lrate(filename='file.in'):
+    return cPickle.load(open(filename,'rb'))
+
 
 # functions to save and resume the learning rate
 # the following 4 fields are written into <lrate_file>, each field per line
@@ -160,6 +215,3 @@ def resume_lrate(lrate, lrate_file):
     line = file_open.readline().replace('\n','')
     lrate.decay = bool(int(line))
     file_open.close()
-
-
-

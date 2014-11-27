@@ -65,8 +65,8 @@ def _nnet2file(layers, set_layer_num = -1, filename='nnet.out', start_layer = 0,
            filter_shape = layer.filter_shape
            for next_X in xrange(filter_shape[0]):
                for this_X in xrange(filter_shape[1]):
-                   dict_a = 'W' + str(i) + ' ' + str(next_X) + ' ' + str(this_X)
-                   nnet_dict[dict_a + ' ' + str(next_X) + ' ' + str(this_X)] = array_2_string(dropout_factor * (layer.W.get_value())[next_X, this_X])
+                   new_dict_a = dict_a + ' ' + str(next_X) + ' ' + str(this_X)
+                   nnet_dict[new_dict_a] = array_2_string((1.0-dropout_factor) * (layer.W.get_value())[next_X, this_X])
 
        dict_a = 'b' + str(i)
        nnet_dict[dict_a] = array_2_string(layer.b.get_value())
@@ -94,10 +94,10 @@ def _file2nnet(layers, set_layer_num = -1, filename='nnet.in',  factor=1.0):
     with open(filename, 'rb') as fp:
         nnet_dict = json.load(fp)
     for i in xrange(set_layer_num):
-        dict_key = 'W' + str(i)
+        dict_a = 'W' + str(i)
         layer = layers[i]
         if layer.type == 'fc':
-            layer.W.set_value(factor * np.asarray(string_2_array(nnet_dict[dict_key]), dtype=theano.config.floatX))
+            layer.W.set_value(factor * np.asarray(string_2_array(nnet_dict[dict_a]), dtype=theano.config.floatX))
         elif layer.type == 'conv':
             filter_shape = layer.filter_shape
             W_array = layer.W.get_value()
@@ -106,8 +106,8 @@ def _file2nnet(layers, set_layer_num = -1, filename='nnet.in',  factor=1.0):
                     new_dict_a = dict_a + ' ' + str(next_X) + ' ' + str(this_X)
                     W_array[next_X, this_X, :, :] = factor * np.asarray(string_2_array(nnet_dict[new_dict_a]), dtype=theano.config.floatX)
             layer.W.set_value(W_array)
-        dict_key = 'b' + str(i) 
-        layer.b.set_value(np.asarray(string_2_array(nnet_dict[dict_key]), dtype=theano.config.floatX))
+        dict_a = 'b' + str(i) 
+        layer.b.set_value(np.asarray(string_2_array(nnet_dict[dict_a]), dtype=theano.config.floatX))
 
 def _cnn2file(conv_layers, filename='nnet.out', input_factor = 1.0, factor=[]):
     n_layers = len(conv_layers)

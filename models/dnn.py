@@ -118,6 +118,7 @@ class DNN(object):
                 W = self.layers[i].W
                 self.finetune_cost += self.l2_reg * T.sqr(W).sum()
 
+
     def build_finetune_functions(self, train_shared_xy, valid_shared_xy, batch_size):
 
         (train_set_x, train_set_y) = train_shared_xy
@@ -172,6 +173,46 @@ class DNN(object):
         feat = T.matrix('feat')
         out_da = theano.function([feat], self.layers[output_layer].output, updates = None, givens={self.x:feat}, on_unused_input='warn')
         return out_da
+
+    def build_finetune_functions_kaldi(self, train_shared_xy, valid_shared_xy):
+
+        (train_set_x, train_set_y) = train_shared_xy
+        (valid_set_x, valid_set_y) = valid_shared_xy
+
+        index = T.lscalar('index')  # index to a [mini]batch
+        learning_rate = T.fscalar('learning_rate')
+        momentum = T.fscalar('momentum')
+
+        # compute the gradients with respect to the model parameters
+        gparams = T.grad(self.finetune_cost, self.params)
+
+        # compute list of fine-tuning updates
+        updates = collections.OrderedDict()
+        for dparam, gparam in zip(self.delta_params, gparams):
+            updates[dparam] = momentum * dparam - gparam*learning_rate
+        for dparam, param in zip(self.delta_params, self.params):
+            updates[param] = param + updates[dparam]
+
+        if self.max_col_norm is not None:
+            for i in xrange(self.hidden_layers_number):
+                W = self.layers[i].W
+                if W in updates:
+                    updated_W = updates[W]
+                    col_norms = T.sqrt(T.sum(T.sqr(updated_W), axis=0))
+                    desired_norms = T.clip(col_norms, 0, self.max_col_norm)
+                    updates[W] = updated_W * (desired_norms / (1e-7 + col_norms))
+
+        train_fn = theano.function(inputs=[theano.Param(learning_rate, default = 0.0001),
+              theano.Param(momentum, default = 0.5)],
+              outputs=self.errors,
+              updates=updates,
+              givens={self.x: train_set_x, self.y: train_set_y})
+
+        valid_fn = theano.function(inputs=[],
+              outputs=self.errors,
+              givens={self.x: valid_set_x, self.y: valid_set_y})
+
+        return train_fn, valid_fn
 
     def write_model_to_raw(self, file_path):
         # output the model to tmp_path; this format is readable by PDNN

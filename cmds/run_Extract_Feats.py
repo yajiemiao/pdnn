@@ -1,4 +1,4 @@
-# Copyright 2013    Yajie Miao    Carnegie Mellon University
+# Copyright 2014    Yajie Miao    Carnegie Mellon University
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ from theano.tensor.shared_randomstreams import RandomStreams
 from models.dnn import DNN
 from models.dropout_nnet import DNN_Dropout
 
-from io_func.model_io import _nnet2file, log
+from io_func.model_io import _file2nnet, log
 from utils.utils import parse_arguments
 from utils.network_config import NetworkConfig
 
@@ -86,7 +86,7 @@ if __name__ == '__main__':
             if output_mat is None:
                 output_mat = output
             else:
-                output_mat = numpy.concatenate((output_mat, output))
+                output_mat = numpy.concatenate((output_mat, output)) # this is not efficient
 
     # output the feature representations using pickle
     if output_file.endswith('.gz'):

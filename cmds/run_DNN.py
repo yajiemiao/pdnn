@@ -1,4 +1,4 @@
-# Copyright 2013    Yajie Miao    Carnegie Mellon University
+# Copyright 2014    Yajie Miao    Carnegie Mellon University
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ from models.dropout_nnet import DNN_Dropout
 
 from io_func.model_io import _nnet2file, _cfg2file, _file2nnet, log
 from utils.utils import parse_arguments
-from utils.learn_rates import  save_lrate, resume_lrate
+from utils.learn_rates import _lrate2file, _file2lrate
 
 from utils.network_config import NetworkConfig
 from learning.sgd import train_sgd, validate_by_minibatch
@@ -66,7 +66,7 @@ if __name__ == '__main__':
     resume_training = False
     if os.path.exists(wdir + '/nnet.tmp') and os.path.exists(wdir + '/training_state.tmp'):
         resume_training = True
-        resume_lrate(cfg.lrate, wdir + '/training_state.tmp')
+        cfg.lrate = _file2lrate(wdir + '/training_state.tmp')
         log('> ... found nnet.tmp and training_state.tmp, now resume training from epoch ' + str(cfg.lrate.epoch))
 
     numpy_rng = numpy.random.RandomState(89677)
@@ -104,7 +104,7 @@ if __name__ == '__main__':
         # output nnet parameters and lrate, for training resume
         if cfg.lrate.epoch % cfg.model_save_step == 0:
             _nnet2file(dnn.layers, filename=wdir + '/nnet.tmp')
-            save_lrate(cfg.lrate, wdir + '/training_state.tmp') 
+            _lrate2file(cfg.lrate, wdir + '/training_state.tmp') 
 
     # save the model and network configuration
     if cfg.param_output_file != '':
