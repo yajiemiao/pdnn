@@ -18,41 +18,43 @@ import gzip
 import os
 import sys
 import time
-import math
 
 import numpy
+import json
+
 import theano
 import theano.tensor as T
 from theano.tensor.shared_randomstreams import RandomStreams
 
-from models.dnn import DNN
-from models.cnn import CNN
-
 from io_func.model_io import _file2nnet, log
+from io_func.kaldi_feat import KaldiReadIn, KaldiWriteOut
+
+from models.cnn import CNN
+from models.dnn import DNN
 from utils.utils import parse_arguments
-from utils.network_config import NetworkConfig
 
 if __name__ == '__main__':
 
-    import sys
 
     # check the arguments
     arg_elements = [sys.argv[i] for i in range(1, len(sys.argv))]
     arguments = parse_arguments(arg_elements)
-    required_arguments = ['data', 'nnet_param', 'nnet_cfg', 'output_file', 'layer_index', 'batch_size']
+    required_arguments = ['in_scp_file', 'out_ark_file', 'nnet_param', 'nnet_cfg', 'layer_index']
     for arg in required_arguments:
         if arguments.has_key(arg) == False:
             print "Error: the argument %s has to be specified" % (arg); exit(1)
 
     # mandatory arguments
-    data_spec = arguments['data']
+    in_scp_file = arguments['in_scp_file']
+    out_ark_file = arguments['out_ark_file']
     nnet_param = arguments['nnet_param']
     nnet_cfg = arguments['nnet_cfg']
-    output_file = arguments['output_file']
     layer_index = int(arguments['layer_index'])
-    batch_size = float(arguments['batch_size'])
 
-    # load network configuration and set up the model
+    # load network configuration
+    cfg = cPickle.load(open(nnet_cfg,'r'))
+
+    # set up the model with model config
     log('> ... setting up the model and loading parameters')
     numpy_rng = numpy.random.RandomState(89677)
     theano_rng = RandomStreams(numpy_rng.randint(2 ** 30))
@@ -65,34 +67,26 @@ if __name__ == '__main__':
 
     # load model parameters
     _file2nnet(model.layers, filename = nnet_param)
-    
-    # initialize data reading
-    cfg.init_data_reading_test(data_spec)
 
     # get the function for feature extraction
     log('> ... getting the feat-extraction function')
     extract_func = model.build_extract_feat_function(layer_index)
 
-    output_mat = None  # store the features for all the data in memory. TODO: output the features in a streaming mode
-    log('> ... generating features from the specified layer')
-    while (not cfg.test_sets.is_finish()):  # loop over the data
-        cfg.test_sets.load_next_partition(cfg.test_xy)
-        batch_num = int(math.ceil(cfg.test_sets.cur_frame_num / batch_size))
-        
-        for batch_index in xrange(batch_num):  # loop over mini-batches
-            start_index = batch_index * batch_size
-            end_index = min((batch_index+1) * batch_size, cfg.test_sets.cur_frame_num)  # the residue may be smaller than a mini-batch
-            output = extract_func(cfg.test_x.get_value()[start_index:end_index])
-            if output_mat is None:
-                output_mat = output
-            else:
-                output_mat = numpy.concatenate((output_mat, output)) # this is not efficient
+    kaldiread = KaldiReadIn(in_scp_file)
+    kaldiwrite = KaldiWriteOut(out_ark_file)
+    log('> ... processing the data')
+    utt_number = 0
+    while True:
+        uttid, in_matrix = kaldiread.read_next_utt()
+        if uttid == '':
+            break
+#        in_matrix = numpy.reshape(in_matrix, (in_matrix.shape[0],) + input_shape_1)
+        out_matrix = extract_func(in_matrix)
+        kaldiwrite.write_kaldi_mat(uttid, out_matrix)
+        utt_number += 1
+        if utt_number % 100 == 0:
+            log('> ... processed %d utterances' % (utt_number))
 
-    # output the feature representations using pickle
-    if output_file.endswith('.gz'):
-        f = gzip.open(output_file, 'wb')
-    else:
-        f = open(output_file, 'wb')
-    cPickle.dump(output_mat, f, cPickle.HIGHEST_PROTOCOL)
+    kaldiwrite.close()
 
-    log('> ... the features are stored in ' + output_file)
+    log('> ... the saved features are %s' % (out_ark_file))

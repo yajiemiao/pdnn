@@ -27,7 +27,7 @@ import theano.tensor as T
 from theano.tensor.shared_randomstreams import RandomStreams
 
 from io_func.model_io import _file2nnet, log
-from io_func.kaldi_feat_io import KaldiReadIn, KaldiWriteOut
+from io_func.kaldi_feat import KaldiReadIn, KaldiWriteOut
 
 from models.cnn import CNN_Forward
 from utils.utils import parse_arguments, string_2_bool

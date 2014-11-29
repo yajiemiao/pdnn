@@ -132,7 +132,7 @@ class NetworkConfig():
             self.kaldi_output_file = arguments['kaldi_output_file']
 
         if arguments.has_key('model_save_step'):
-            self.model_save_step = arguments['model_save_step']
+            self.model_save_step = int(arguments['model_save_step'])
 
     def parse_config_dnn(self, arguments, nnet_spec):
         self.parse_config_common(arguments)
@@ -155,5 +155,4 @@ class NetworkConfig():
         # whether we use the fast version of convolution 
         if arguments.has_key('use_fast'):
             self.use_fast = string_2_bool(arguments['use_fast'])
-
 

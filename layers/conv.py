@@ -27,20 +27,25 @@ from theano.tensor.signal import downsample
 from theano.tensor.nnet import conv
 
 class ConvLayer(object):
-    """Pool Layer of a convolutional network """
+    """Convolutional layer with max pooling """
 
-    def __init__(self, numpy_rng=None, input = None, input_shape=(1,28,28), filter_shape=(2, 1, 5, 5), 
+    def __init__(self, numpy_rng=None, input = None, input_shape=(256, 1,28,28), filter_shape=(2, 1, 5, 5), 
                  poolsize=(1, 1), activation=T.tanh,
                  flatten = False, border_mode = 'valid',
 		 non_maximum_erasing = False, W=None, b=None,
-                 use_fast = False):
+                 use_fast = False, testing = False):
 
         self.type = 'conv'
 
         assert input_shape[1] == filter_shape[1]
-        self.input = input.reshape(input_shape)
+        
+        if testing:
+            self.input = input.reshape((input.shape[0], input_shape[1], input_shape[2], input_shape[3]))
+            input_shape = None
+        else:
+            self.input = input.reshape(input_shape)
+        
 
-        self.input_shape = input_shape
         self.filter_shape = filter_shape
         self.poolsize = poolsize
 

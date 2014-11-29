@@ -124,7 +124,7 @@ def parse_activation(act_str):
         return T.nnet.sigmoid
     if act_str == 'tanh':
         return T.tanh
-    if act_str == 'relu':
+    if act_str == 'rectifier':
         return lambda x: T.maximum(0.0, x)
     return T.nnet.sigmoid
 

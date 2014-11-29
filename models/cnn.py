@@ -49,7 +49,7 @@ class ConvLayer_Config(object):
 
 class CNN(object):
 
-    def __init__(self, numpy_rng, theano_rng=None, cfg = None):
+    def __init__(self, numpy_rng, theano_rng=None, cfg = None, testing = False):
 
         self.layers = []
         self.params = []
@@ -77,7 +77,7 @@ class CNN(object):
             config = self.conv_layer_configs[i]
             conv_layer = ConvLayer(numpy_rng=numpy_rng, input=input,
 			input_shape = config['input_shape'], filter_shape = config['filter_shape'], poolsize = config['poolsize'],
-			activation = self.conv_activation, flatten = config['flatten'], use_fast = self.use_fast)
+			activation = self.conv_activation, flatten = config['flatten'], use_fast = self.use_fast, testing = testing)
 	    self.layers.append(conv_layer)
             self.conv_layers.append(conv_layer)
 	    self.params.extend(conv_layer.params)
@@ -147,7 +147,7 @@ class CNN(object):
 
     def build_extract_feat_function(self, output_layer):
 
-        feat = T.tensor4('feat')
+        feat = T.matrix('feat')
         out_da = theano.function([feat], self.layers[output_layer].output, updates = None, givens={self.x:feat}, on_unused_input='warn')
         return out_da
 

@@ -24,5 +24,5 @@ for i in xrange(pred_mat.shape[0]):
 
 # output the final error rate
 error_rate = 100 * (1.0 - correct_number / pred_mat.shape[0])
-print 'DNN error rate is ' + str(error_rate) + ' (%)'
+print 'Error rate is ' + str(error_rate) + ' (%)'
 
