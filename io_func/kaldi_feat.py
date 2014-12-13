@@ -25,9 +25,13 @@ import theano
 
 import struct
 
-# Functions to read and write Kaldi text-formatted .scp and .ark
-# Only used for generating convolution layer activation
+# Classes to read and write Kaldi features. They are used when PDNN passes Kaldi features
+# through trained models and saves network activation into Kaldi features. Currently we 
+# are using them during decoding of convolutional networks.
 
+# Class to read Kaldi features. Each time, it reads one line of the .scp file
+# and reads in the corresponding features into a numpy matrix. It only supports
+# binary-formatted .ark files. Text and compressed .ark files are not supported. 
 class KaldiReadIn(object):
 
     def __init__(self, scp_path):
@@ -60,6 +64,8 @@ class KaldiReadIn(object):
         return utt_id, utt_mat
 
 
+# Class to write numpy matrix into Kaldi .ark file. It only supports binary-formatted .ark files.
+# Text and compressed .ark files are not supported.
 class KaldiWriteOut(object):
 
     def __init__(self, ark_path):

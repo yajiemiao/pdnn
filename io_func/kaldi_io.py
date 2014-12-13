@@ -28,15 +28,16 @@ class KaldiDataRead(object):
 
     def __init__(self, scp_list = [], read_opts = None):
 
-        self.scp_file = scp_list[0]
+        self.scp_file = scp_list[0]     # path to the .scp file
         self.read_opts = read_opts
         if read_opts.has_key('label'):
-            self.ali_file = read_opts['label']
-            self.ali_provided = True
+            self.ali_file = read_opts['label']  # path to the alignment file
+            self.ali_provided = True    # if alignment is provided
         else:
             self.ali_file = ''
             self.ali_provided = False
 
+        # left and right context for feature splicing
         self.left_context = 0; self.right_context = 0
         if read_opts.has_key('lcxt'):
             self.left_context = int(read_opts['lcxt'])
@@ -45,7 +46,7 @@ class KaldiDataRead(object):
 
         self.scp_file_read = None
         self.scp_cur_pos = None
-        # pfile information
+        # feature information
         self.original_feat_dim = 1024
         self.feat_dim = 1024
         self.cur_frame_num = 1024
@@ -57,6 +58,7 @@ class KaldiDataRead(object):
         self.feats = numpy.zeros((10,self.feat_dim), dtype=theano.config.floatX)
         self.labels = numpy.zeros((10,), dtype=numpy.int32)
 
+    # read the alignment of all the utterances and keep the alignment in CPU memory. 
     def read_alignment(self):
         if '.gz' in self.ali_file:
             f_read = gzip.open(self.ali_file, 'r')
@@ -73,10 +75,11 @@ class KaldiDataRead(object):
             self.alignment[utt_id] = numpy.fromstring(utt_ali, dtype=numpy.int32, sep=' ')
         f_read.close()
 
+    # read the feature matrix of the next utterance
     def read_next_utt(self):
         self.scp_cur_pos = self.scp_file_read.tell()
         next_scp_line = self.scp_file_read.readline()
-        if next_scp_line == '' or next_scp_line == None:
+        if next_scp_line == '' or next_scp_line == None:    # we are reaching the end of one epoch
             return '', None
         utt_id, path_pos = next_scp_line.replace('\n','').split(' ')
         path, pos = path_pos.split(':')
@@ -86,7 +89,8 @@ class KaldiDataRead(object):
         else:
             ark_read_buffer = open(path, 'rb')
         ark_read_buffer.seek(int(pos),0)
-        
+       
+        # now start to read the feature matrix into a numpy matrix 
         header = struct.unpack('<xcccc', ark_read_buffer.read(5))
         if header[0] != "B":
             print "Input .ark file is not binary"; exit(1)
@@ -112,12 +116,12 @@ class KaldiDataRead(object):
             self.original_feat_dim = utt_mat.shape[1]
             self.scp_file_read = open(self.scp_file, 'r')
 
-            #
+            # compute the feature dimension
             self.feat_dim = self.original_feat_dim
             if self.left_context > 0 or self.right_context > 0:
                 self.feat_dim = (self.left_context + 1 + self.right_context) * self.original_feat_dim
 
-            # allocate the feat matrix
+            # allocate the feat matrix according to the specified partition size
             self.max_frame_num = self.read_opts['partition'] / (self.feat_dim * 4)
             self.feats = numpy.zeros((self.max_frame_num, self.feat_dim), dtype=theano.config.floatX)
             if self.ali_provided:
