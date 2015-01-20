@@ -1,7 +1,7 @@
 
 == Example with the MNIST dataset ==
 
-1.Change the *pdnndir* and *devide* variables in run.sh  
+1.Change the *pdnndir* and *device* variables in run.sh  
 
 2.Run run.sh in the terminal. You will see the following log  
 
