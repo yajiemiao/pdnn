@@ -28,6 +28,7 @@ from theano.tensor.shared_randomstreams import RandomStreams
 
 from layers.logistic_sgd import LogisticRegression
 from layers.mlp import HiddenLayer, DropoutHiddenLayer, _dropout_from_layer
+from layers.rnn import RnnLayer
 
 from io_func.model_io import _nnet2file, _file2nnet
 
@@ -41,6 +42,9 @@ class DNN(object):
         self.params = []
         self.delta_params = []
 
+        self.rnn_layerX = 2
+        print "Use DRN"
+
         self.cfg = cfg
         self.n_ins = cfg.n_ins; self.n_outs = cfg.n_outs
         self.hidden_layers_sizes = cfg.hidden_layers_sizes
@@ -52,8 +56,6 @@ class DNN(object):
         self.max_col_norm = cfg.max_col_norm
         self.l1_reg = cfg.l1_reg
         self.l2_reg = cfg.l2_reg
-
-        self.non_updated_layers = cfg.non_updated_layers
 
         if not theano_rng:
             theano_rng = RandomStreams(numpy_rng.randint(2 ** 30))
@@ -76,16 +78,24 @@ class DNN(object):
             W = None; b = None
             if (i in shared_layers) :
                 W = dnn_shared.layers[i].W; b = dnn_shared.layers[i].b
-            if self.do_maxout == True:
-                hidden_layer = HiddenLayer(rng=numpy_rng,
+            if i == self.rnn_layerX:
+                hidden_layer = RnnLayer(rng=numpy_rng,
+                                        input=layer_input,
+                                        n_in=input_size,
+                                        n_out=self.hidden_layers_sizes[i],
+                                        W = W, b = b,
+                                        activation=self.activation) 
+            else:
+                if self.do_maxout == True:
+                    hidden_layer = HiddenLayer(rng=numpy_rng,
                                         input=layer_input,
                                         n_in=input_size,
                                         n_out=self.hidden_layers_sizes[i] * self.pool_size,
                                         W = W, b = b,
                                         activation = (lambda x: 1.0*x),
                                         do_maxout = True, pool_size = self.pool_size)
-            else:
-                hidden_layer = HiddenLayer(rng=numpy_rng,
+                else:
+                    hidden_layer = HiddenLayer(rng=numpy_rng,
                                         input=layer_input,
                                         n_in=input_size,
                                         n_out=self.hidden_layers_sizes[i],
@@ -93,10 +103,8 @@ class DNN(object):
                                         activation=self.activation)
             # add the layer to our list of layers
             self.layers.append(hidden_layer)
-            # if the layer index is included in self.non_updated_layers, parameters of this layer will not be updated
-            if (i not in self.non_updated_layers):
-                self.params.extend(hidden_layer.params)
-                self.delta_params.extend(hidden_layer.delta_params)
+            self.params.extend(hidden_layer.params)
+            self.delta_params.extend(hidden_layer.delta_params)
         # We now need to add a logistic layer on top of the MLP
         self.logLayer = LogisticRegression(
                          input=self.layers[-1].output,

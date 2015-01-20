@@ -49,7 +49,7 @@ class ConvLayer_Config(object):
 
 class CNN(object):
 
-    def __init__(self, numpy_rng, theano_rng=None, cfg = None, testing = False):
+    def __init__(self, numpy_rng, theano_rng=None, cfg = None, testing = False, input = None):
 
         self.layers = []
         self.params = []
@@ -65,7 +65,10 @@ class CNN(object):
         if not theano_rng:
             theano_rng = RandomStreams(numpy_rng.randint(2 ** 30))
         # allocate symbolic variables for the data
-        self.x = T.matrix('x')  
+        if input == None:
+            self.x = T.matrix('x')
+        else:
+            self.x = input
         self.y = T.ivector('y') 
         
         self.conv_layer_num = len(self.conv_layer_configs)

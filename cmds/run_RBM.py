@@ -115,7 +115,7 @@ if __name__ == '__main__':
         _nnet2file(dnn.layers, filename=cfg.param_output_file)
         log('> ... the final PDNN model parameter is ' + cfg.param_output_file)
     if cfg.cfg_output_file != '':
-        _cfg2file(srbm.cfg, filename=cfg.cfg_output_file)
+        _cfg2file(dnn.cfg, filename=cfg.cfg_output_file)
         log('> ... the final PDNN model config is ' + cfg.cfg_output_file)
 
     # output the model into Kaldi-compatible format

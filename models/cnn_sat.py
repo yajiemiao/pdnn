@@ -21,6 +21,7 @@ import time
 import collections
 
 import numpy
+import json
 
 import theano
 import theano.tensor as T
@@ -31,126 +32,53 @@ from layers.logistic_sgd import LogisticRegression
 from layers.mlp import HiddenLayer
 
 from layers.conv import ConvLayer, ConvLayerForward
-from models.cnn import ConvLayer_Config
+from dnn import DNN
+from cnn import CNN
 
 class CNN_SAT(object):
 
-    def __init__(self, numpy_rng, theano_rng=None,
-                 batch_size = 256, n_outs=500,
-                 conv_layer_configs = [],
-                 hidden_layers_sizes=[500, 500],
-                 ivec_layers_sizes=[500, 500],
-                 conv_activation = T.nnet.sigmoid,
-                 full_activation = T.nnet.sigmoid,
-                 use_fast = False,
-                 update_part = [0, 1],
-                 ivec_dim = 100):
+    def __init__(self, numpy_rng, theano_rng=None, cfg_si = None, cfg_adapt = None, testing = False):
 
-        self.conv_layers = []
-        self.full_layers = []
-        self.ivec_layers = [] 
-        
+        # allocate symbolic variables for the data
+        self.x = T.matrix('x')
+        self.y = T.ivector('y')
+
+        # we assume that i-vectors are appended to speech features in a frame-wise manner  
+        cnn_input_shape = cfg_si.conv_layer_configs[0]['input_shape']
+        self.feat_dim = cnn_input_shape[-1] * cnn_input_shape[-2] * cnn_input_shape[-3]
+        self.ivec_dim = cfg_adapt.n_ins
+
+        self.iv = self.x[:,self.feat_dim:self.feat_dim+self.ivec_dim]
+        self.feat = self.x[:,0:self.feat_dim]
+
         self.params = []
         self.delta_params   = []
 
-        if not theano_rng:
-            theano_rng = RandomStreams(numpy_rng.randint(2 ** 30))
-        # allocate symbolic variables for the data
-        self.x = T.matrix('x')  
-        self.y = T.ivector('y') 
-       
-        input_shape = conv_layer_configs[0]['input_shape']
-        n_ins = input_shape[-1] * input_shape[-2] * input_shape[-3]
-
-        self.iv = self.x[:,n_ins:n_ins+ivec_dim]
-        self.raw = self.x[:,0:n_ins]
+        # the i-vector network
+        dnn_adapt = DNN(numpy_rng=numpy_rng, theano_rng = theano_rng, cfg = cfg_adapt, input  = self.iv)
+        self.dnn_adapt = dnn_adapt
  
-        self.conv_layer_num = len(conv_layer_configs)
-        self.full_layer_num = len(hidden_layers_sizes)
-        self.ivec_layer_num = len(ivec_layers_sizes)
-
-        # construct the adaptation NN
-        for i in xrange(self.ivec_layer_num):
-            if i == 0:
-                input_size = ivec_dim
-                layer_input = self.iv
-            else:
-                input_size = ivec_layers_sizes[i - 1]
-                layer_input = self.ivec_layers[-1].output
-
-            sigmoid_layer = HiddenLayer(rng=numpy_rng,
-                                        input=layer_input,
-                                        n_in=input_size,
-                                        n_out=ivec_layers_sizes[i],
-                                        activation=T.nnet.sigmoid)
-            # add the layer to our list of layers
-            self.ivec_layers.append(sigmoid_layer)
-            if 0 in update_part:
-                self.params.extend(sigmoid_layer.params)
-                self.delta_params.extend(sigmoid_layer.delta_params)
-
+        # the final output layer which has the same dimension as the input features
         linear_func = lambda x: x
-        sigmoid_layer = HiddenLayer(rng=numpy_rng,
-                                    input=self.ivec_layers[-1].output,
-                                    n_in=ivec_layers_sizes[-1],
-                                    n_out=n_ins,
-                                    activation=linear_func)
-        self.ivec_layers.append(sigmoid_layer)
-        if 0 in update_part:
-            self.params.extend(sigmoid_layer.params)
-            self.delta_params.extend(sigmoid_layer.delta_params)
+        adapt_output_layer = HiddenLayer(rng=numpy_rng,
+                                 input=dnn_adapt.layers[-1].output,
+                                 n_in=cfg_adapt.hidden_layers_sizes[-1],
+                                 n_out=self.feat_dim,
+                                 activation=linear_func)
+        dnn_adapt.layers.append(adapt_output_layer)
+        dnn_adapt.params.extend(adapt_output_layer.params)
+        dnn_adapt.delta_params.extend(adapt_output_layer.delta_params)
 
 
-        for i in xrange(self.conv_layer_num):
-            if i == 0:
-                input = self.raw + self.ivec_layers[-1].output 
-            else:
-                input = self.conv_layers[-1].output
-            config = conv_layer_configs[i]
-            conv_layer = ConvLayer(numpy_rng=numpy_rng, input=input,
-			input_shape = config['input_shape'], filter_shape = config['filter_shape'], poolsize = config['poolsize'],
-			activation = conv_activation, flatten = config['flatten'], use_fast = use_fast)
-	    self.conv_layers.append(conv_layer)
-            if 1 in update_part:
-	        self.params.extend(conv_layer.params)
-                self.delta_params.extend(conv_layer.delta_params)
+        # construct the cnn architecture
+        cnn_si = CNN(numpy_rng=numpy_rng, theano_rng = theano_rng, cfg = cfg_si, input = self.feat + dnn_adapt.layers[-1].output)
+        self.cnn_si = cnn_si
 
-        self.conv_output_dim = config['output_shape'][1] * config['output_shape'][2] * config['output_shape'][3]
-
-        for i in xrange(self.full_layer_num):
-            # construct the sigmoidal layer
-            if i == 0:
-                input_size = self.conv_output_dim
-                layer_input = self.conv_layers[-1].output
-            else:
-                input_size = hidden_layers_sizes[i - 1]
-                layer_input = self.full_layers[-1].output
-
-            sigmoid_layer = HiddenLayer(rng=numpy_rng,
-                                        input=layer_input,
-                                        n_in=input_size,
-                                        n_out=hidden_layers_sizes[i],
-                                        activation=full_activation)
-            # add the layer to our list of layers
-            self.full_layers.append(sigmoid_layer)
-            if 1 in update_part:
-                self.params.extend(sigmoid_layer.params)
-                self.delta_params.extend(sigmoid_layer.delta_params)
-	# We now need to add a logistic layer on top of the MLP
-	self.logLayer = LogisticRegression(
-			       input=self.full_layers[-1].output,
-			       n_in=hidden_layers_sizes[-1], n_out=n_outs)
-        self.full_layers.append(self.logLayer)
-        if 1 in update_part:
-            self.params.extend(self.logLayer.params)
-            self.delta_params.extend(self.logLayer.delta_params)
-
-        self.finetune_cost = self.logLayer.negative_log_likelihood(self.y)
-
-        self.errors = self.logLayer.errors(self.y)
-
-    def kl_divergence(self, p, p_hat):
-        return p * T.log(p / p_hat) + (1 - p) * T.log((1 - p) / (1 - p_hat))
+        # construct a function that implements one step of finetunining
+        # compute the cost for second phase of training,
+        # defined as the negative log likelihood
+        self.finetune_cost = cnn_si.fc_dnn.logLayer.negative_log_likelihood(self.y)
+        self.errors = cnn_si.fc_dnn.logLayer.errors(self.y)
 
     def build_finetune_functions(self, train_shared_xy, valid_shared_xy, batch_size):
 
@@ -165,8 +93,7 @@ class CNN_SAT(object):
         gparams = T.grad(self.finetune_cost, self.params)
 
         # compute list of fine-tuning updates
-        updates = updates = collections.OrderedDict()
-
+        updates = collections.OrderedDict()
         for dparam, gparam in zip(self.delta_params, gparams):
             updates[dparam] = momentum * dparam - gparam*learning_rate
         for dparam, param in zip(self.delta_params, self.params):

@@ -32,12 +32,7 @@ from dnn import DNN
 
 class DNN_SAT(object):
 
-    def __init__(self, numpy_rng, theano_rng=None, cfg_si = None, cfg_ivec = None):
-
-#        dnn_si = DNN(numpy_rng=numpy_rng, theano_rng = theano_rng, cfg = cfg_si)
-#        dnn_ivec = DNN(numpy_rng=numpy_rng, theano_rng = theano_rng, cfg = cfg_ivec)
-
-#        self.dnn_si = dnn_si; self.dnn_ivec = dnn_ivec
+    def __init__(self, numpy_rng, theano_rng=None, cfg_si = None, cfg_adapt = None):
 
         # allocate symbolic variables for the data
         self.x = T.matrix('x')
@@ -45,7 +40,7 @@ class DNN_SAT(object):
     
         # we assume that i-vectors are appended to speech features in a frame-wise manner  
         self.feat_dim = cfg_si.n_ins
-        self.ivec_dim = cfg_ivec.n_ins
+        self.ivec_dim = cfg_adapt.n_ins
         self.iv = self.x[:,self.feat_dim:self.feat_dim+self.ivec_dim]
         self.feat = self.x[:,0:self.feat_dim]
         
@@ -54,21 +49,21 @@ class DNN_SAT(object):
         self.delta_params = []
         
         # the i-vector network
-        dnn_ivec = DNN(numpy_rng=numpy_rng, theano_rng = theano_rng, cfg = cfg_ivec, input  = self.iv)
-        self.dnn_ivec = dnn_ivec
+        dnn_adapt = DNN(numpy_rng=numpy_rng, theano_rng = theano_rng, cfg = cfg_adapt, input  = self.iv)
+        self.dnn_adapt = dnn_adapt
 
         # the final output layer which has the same dimension as the input features
         linear_func = lambda x: x
-        ivec_output_layer = HiddenLayer(rng=numpy_rng,
-                                 input=dnn_ivec.layers[-1].output,
-                                 n_in=cfg_ivec.hidden_layers_sizes[-1],
+        adapt_output_layer = HiddenLayer(rng=numpy_rng,
+                                 input=dnn_adapt.layers[-1].output,
+                                 n_in=cfg_adapt.hidden_layers_sizes[-1],
                                  n_out=self.feat_dim,
                                  activation=linear_func)
-        dnn_ivec.layers.append(ivec_output_layer)
-        dnn_ivec.params.extend(ivec_output_layer.params)
-        dnn_ivec.delta_params.extend(ivec_output_layer.delta_params)
+        dnn_adapt.layers.append(adapt_output_layer)
+        dnn_adapt.params.extend(adapt_output_layer.params)
+        dnn_adapt.delta_params.extend(adapt_output_layer.delta_params)
 
-        dnn_si = DNN(numpy_rng=numpy_rng, theano_rng = theano_rng, cfg = cfg_si, input = self.feat + dnn_ivec.layers[-1].output)
+        dnn_si = DNN(numpy_rng=numpy_rng, theano_rng = theano_rng, cfg = cfg_si, input = self.feat + dnn_adapt.layers[-1].output)
         self.dnn_si = dnn_si
 
         # construct a function that implements one step of finetunining

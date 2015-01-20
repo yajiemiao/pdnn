@@ -65,6 +65,7 @@ class NetworkConfig():
         self.n_ins = 0
         self.hidden_layers_sizes = []
         self.n_outs = 0
+        self.non_updated_layers = []
 
         # specifically for DNN_SAT
         self.ivec_n_ins = 0
@@ -133,6 +134,10 @@ class NetworkConfig():
 
         if arguments.has_key('model_save_step'):
             self.model_save_step = int(arguments['model_save_step'])
+
+        if arguments.has_key('non_updated_layers'):
+            layers = arguments['non_updated_layers'].split(",")
+            self.non_updated_layers = [int(layer) for layer in layers]
 
     def parse_config_dnn(self, arguments, nnet_spec):
         self.parse_config_common(arguments)
