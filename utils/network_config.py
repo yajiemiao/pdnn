@@ -97,6 +97,10 @@ class NetworkConfig():
         dataset, dataset_args = read_data_args(data_spec)
         self.test_sets, self.test_xy, self.test_x, self.test_y = read_dataset(dataset, dataset_args)
 
+    # initialize the activation function
+    def init_activation(self):
+        self.activation = parse_activation(self.activation_text)
+
     def parse_config_common(self, arguments):
         # parse batch_size, momentum and learning rate 
         if arguments.has_key('batch_size'):

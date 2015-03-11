@@ -53,6 +53,7 @@ if __name__ == '__main__':
 
     # load network configuration
     cfg = cPickle.load(open(nnet_cfg,'r'))
+    cfg.init_activation()
 
     # set up the model with model config
     log('> ... setting up the model and loading parameters')

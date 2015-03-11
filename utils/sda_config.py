@@ -74,6 +74,10 @@ class SdAConfig():
         train_dataset, train_dataset_args = read_data_args(train_data_spec)
         self.train_sets, self.train_xy, self.train_x, self.train_y = read_dataset(train_dataset, train_dataset_args)
 
+    # initialize the activation function
+    def init_activation(self):
+        self.activation = parse_activation(self.activation_text)
+
     # parse the arguments to get the values for various variables 
     def parse_config_common(self, arguments):
         if arguments.has_key('corruption_level'):

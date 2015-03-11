@@ -57,6 +57,7 @@ if __name__ == '__main__':
     numpy_rng = numpy.random.RandomState(89677)
     theano_rng = RandomStreams(numpy_rng.randint(2 ** 30))
     cfg = cPickle.load(open(nnet_cfg,'r'))
+    cfg.init_activation()
     model = None
     if cfg.model_type == 'DNN':
         model = DNN(numpy_rng=numpy_rng, theano_rng = theano_rng, cfg = cfg)

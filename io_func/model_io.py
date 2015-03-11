@@ -82,6 +82,9 @@ def _cfg2file(cfg, filename='cfg.out'):
     cfg.lrate = None
     cfg.train_sets = None; cfg.train_xy = None; cfg.train_x = None; cfg.train_y = None
     cfg.valid_sets = None; cfg.valid_xy = None; cfg.valid_x = None; cfg.valid_y = None
+    cfg.activation = None  # saving the rectifier function causes errors; thus we don't save the activation function
+                           # the activation function is initialized from the activation text ("sigmoid") when the network
+                           # configuration is loaded
     with open(filename, "wb") as output:
         cPickle.dump(cfg, output, cPickle.HIGHEST_PROTOCOL)
 
