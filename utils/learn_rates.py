@@ -105,7 +105,6 @@ class LearningMinLrate(LearningRate):
 
         self.rate = start_rate
         self.scale_by = scale_by
-        self.max_epochs = max_epochs
         self.min_lrate_stop = min_lrate_stop
         self.lowest_error = init_error
 
