@@ -64,11 +64,12 @@ if __name__ == '__main__':
     cfg_si.init_data_reading(train_data_spec, valid_data_spec)   
     # parse the structure of the i-vector network 
     cfg_adapt = NetworkConfig()
-    net_split = adapt_nnet_spec.split(':')
-    adapt_nnet_spec = ''
-    for n in xrange(len(net_split) - 1):
-        adapt_nnet_spec += net_split[n] + ':'
-    cfg_adapt.parse_config_dnn(arguments, adapt_nnet_spec + '0')
+#    net_split = adapt_nnet_spec.split(':')
+#    adapt_nnet_spec = ''
+#    for n in xrange(len(net_split) - 1):
+#        adapt_nnet_spec += net_split[n] + ':'
+#    cfg_adapt.parse_config_dnn(arguments, adapt_nnet_spec + '0')
+    cfg_adapt.parse_config_dnn(arguments, adapt_nnet_spec + ':0')
 
     numpy_rng = numpy.random.RandomState(89677)
     theano_rng = RandomStreams(numpy_rng.randint(2 ** 30))
