@@ -28,6 +28,7 @@ from theano.tensor.shared_randomstreams import RandomStreams
 from models.dnn import DNN
 from models.cnn import CNN
 
+from io_func import smart_open
 from io_func.model_io import _file2nnet, log
 from utils.utils import parse_arguments
 from utils.network_config import NetworkConfig
@@ -56,7 +57,7 @@ if __name__ == '__main__':
     log('> ... setting up the model and loading parameters')
     numpy_rng = numpy.random.RandomState(89677)
     theano_rng = RandomStreams(numpy_rng.randint(2 ** 30))
-    cfg = cPickle.load(open(nnet_cfg,'r'))
+    cfg = cPickle.load(smart_open(nnet_cfg,'r'))
     cfg.init_activation()
     model = None
     if cfg.model_type == 'DNN':
@@ -66,7 +67,7 @@ if __name__ == '__main__':
 
     # load model parameters
     _file2nnet(model.layers, filename = nnet_param)
-    
+
     # initialize data reading
     cfg.init_data_reading_test(data_spec)
 
@@ -79,7 +80,7 @@ if __name__ == '__main__':
     while (not cfg.test_sets.is_finish()):  # loop over the data
         cfg.test_sets.load_next_partition(cfg.test_xy)
         batch_num = int(math.ceil(cfg.test_sets.cur_frame_num / batch_size))
-        
+
         for batch_index in xrange(batch_num):  # loop over mini-batches
             start_index = batch_index * batch_size
             end_index = min((batch_index+1) * batch_size, cfg.test_sets.cur_frame_num)  # the residue may be smaller than a mini-batch
@@ -90,10 +91,7 @@ if __name__ == '__main__':
                 output_mat = numpy.concatenate((output_mat, output)) # this is not efficient
 
     # output the feature representations using pickle
-    if output_file.endswith('.gz'):
-        f = gzip.open(output_file, 'wb')
-    else:
-        f = open(output_file, 'wb')
+    f = smart_open(output_file, 'wb')
     cPickle.dump(output_mat, f, cPickle.HIGHEST_PROTOCOL)
 
     log('> ... the features are stored in ' + output_file)

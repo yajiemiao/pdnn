@@ -1,4 +1,4 @@
-# Copyright 2013    Yajie Miao    Carnegie Mellon University 
+# Copyright 2013    Yajie Miao    Carnegie Mellon University
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import theano
 import theano.tensor as T
 from utils.utils import string_2_bool
 from model_io import log
+from io_func import smart_open
 
 class PfileDataRead(object):
 
@@ -44,7 +45,7 @@ class PfileDataRead(object):
         self.frame_to_read = 0
         self.partition_num = 0
         self.frame_per_partition = 0
-        
+
         # store number of frames, features and labels for each data partition
         self.frame_nums = []
         self.feat_mats = []
@@ -78,7 +79,7 @@ class PfileDataRead(object):
         self.frame_per_partition = self.read_opts['partition'] / (self.feat_dim * 4)
         batch_residual = self.frame_per_partition % 256
         self.frame_per_partition = self.frame_per_partition - batch_residual
-        
+
     def read_pfile_data(self):
         # data format for pfile reading
         # s -- sentence index; f -- frame index; d -- features; l -- label
@@ -106,7 +107,7 @@ class PfileDataRead(object):
         # finish reading; close the file
         self.partition_num = len(self.feat_mats)
         self.file_read.close()
-  
+
     def load_next_partition(self, shared_xy):
         feat = self.feat_mats[self.partition_index]
         label = self.label_vecs[self.partition_index]
@@ -136,21 +137,14 @@ class PfileDataRead(object):
 
     # reopen pfile with the same filename
     def reopen_file(self):
-        if self.pfile_path.endswith('.gz'):
-            self.file_read = gzip.open(self.pfile_path)
-        else:
-            self.file_read = open(self.pfile_path)
+        self.file_read = smart_open(self.pfile_path, 'rb')
         self.read_pfile_info()
         self.initialize_read()
         self.read_pfile_data()
 
     def initialize_read(self, first_time_reading = False):
-        # 
         pfile_path = self.pfile_path_list[self.cur_pfile_index]
-        if pfile_path.endswith('.gz'):
-            self.file_read = gzip.open(pfile_path, 'r')
-        else:
-            self.file_read = open(pfile_path, 'r')
+        self.file_read = smart_open(pfile_path, 'rb')
 
         if first_time_reading or len(self.pfile_path_list) > 1:
             self.frame_nums = []
@@ -165,7 +159,7 @@ class PfileDataRead(object):
         # define shared variables
         feat = self.feat_mats[0]
         label = self.label_vecs[0]
-        
+
         if self.read_opts['random']:  # randomly shuffle features and labels in the *same* order
             numpy.random.seed(18877)
             numpy.random.shuffle(feat)
@@ -226,32 +220,26 @@ class PfileDataReadStream(object):
         self.frame_per_partition = self.read_opts['partition'] / (self.feat_dim * 4)
         batch_residual = self.frame_per_partition % 256
         self.frame_per_partition = self.frame_per_partition - batch_residual
-        
+
     # reopen pfile with the same filename
     def reopen_file(self):
-        if self.pfile_path.endswith('.gz'):
-            self.file_read = gzip.open(self.pfile_path)
-        else:
-            self.file_read = open(self.pfile_path)
+        self.file_read = smart_open(self.pfile_path, 'rb')
         self.read_pfile_info()
-        self.initialize_read() 
+        self.initialize_read()
 
     def is_finish(self):
         return self.end_reading
 
     def initialize_read(self, first_time_reading = False):
-        self.pfile_path = self.pfile_path_list[self.cur_pfile_index] 
-        if self.pfile_path.endswith('.gz'):
-            self.file_read = gzip.open(self.pfile_path)
-        else:
-            self.file_read = open(self.pfile_path)
+        self.pfile_path = self.pfile_path_list[self.cur_pfile_index]
+        self.file_read = smart_open(self.pfile_path)
         self.read_pfile_info()
         self.end_reading = False
-        
+
         self.file_read.seek(self.header_size, 0)
         self.frame_to_read = self.total_frame_num
 
-    # load the n-th (0 indexed) partition to the GPU memory 
+    # load the n-th (0 indexed) partition to the GPU memory
     def load_next_partition(self, shared_xy):
         shared_x, shared_y = shared_xy
 
@@ -274,13 +262,13 @@ class PfileDataReadStream(object):
         self.label = numpy.asarray(partition_array['l'], dtype = theano.config.floatX)
         self.cur_frame_num = frameNum_this_partition
         self.frame_to_read = self.frame_to_read - frameNum_this_partition
-        
+
         if self.read_opts['random']:  # randomly shuffle features and labels in the *same* order
             numpy.random.seed(18877)
             numpy.random.shuffle(self.feat)
             numpy.random.seed(18877)
             numpy.random.shuffle(self.label)
-            
+
         shared_x.set_value(self.feat, borrow=True)
         shared_y.set_value(self.label, borrow=True)
 

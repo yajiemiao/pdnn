@@ -1,4 +1,4 @@
-# Copyright 2013    Yajie Miao    Carnegie Mellon University 
+# Copyright 2013    Yajie Miao    Carnegie Mellon University
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +21,8 @@ import sys
 from StringIO import StringIO
 import json
 
+from io_func import smart_open
+
 # write a matrix into the matlab format
 def write_mat_matlab(input_size, output_size, name, mat, fout = sys.stdout):
     fout.write(struct.pack('5I%dsb' % len(name), 10, output_size, input_size, 0, len(name)+1, name, 0))
@@ -42,9 +44,9 @@ def _nnet2janus(nnet_topo, set_layer_num = -1, filein='nnet.in', fileout='nnet.o
     else:
         layer_num = set_layer_num + 1
     nnet_dict = {}
-    with open(filein, 'rb') as fp:
+    with smart_open(filein, 'rb') as fp:
         nnet_dict = json.load(fp)
-    fout = open(fileout, 'wb')
+    fout = smart_open(fileout, 'wb')
     lnum = 1
     for i in xrange(layer_num - 1):
         input_size = int(layers[i])
@@ -104,9 +106,9 @@ def _nnet2janus_maxout(nnet_topo, set_layer_num = -1, pool_size = 1, filein='nne
     else:
         layer_num = set_layer_num + 1
     nnet_dict = {}
-    with open(filein, 'rb') as fp:
+    with smart_open(filein, 'rb') as fp:
         nnet_dict = json.load(fp)
-    fout = open(fileout, 'wb')
+    fout = smart_open(fileout, 'wb')
     lnum = 1
     for i in xrange(layer_num - 1):
         input_size = int(layers[i])

@@ -1,4 +1,4 @@
-# Copyright 2013    Yajie Miao    Carnegie Mellon University 
+# Copyright 2013    Yajie Miao    Carnegie Mellon University
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@ def read_data_args(data_spec):
     dataset_args['partition'] = 1024 * 1024 * 600  # by default the partition size is 600m if stream is True
 
     # the type of the data: pickle, pfile   TO-DO: HDF5
-    if '.pickle' in data_spec:
+    if '.pickle' in data_spec or '.pkl' in data_spec:
         dataset_args['type'] = 'pickle'
     elif '.pfile' in data_spec:
         dataset_args['type'] = 'pfile'
@@ -75,7 +75,7 @@ def read_dataset(file_path_list, read_opts):
         data_reader = KaldiDataRead(file_path_list, read_opts)
 
     data_reader.initialize_read(first_time_reading = True)
-    
+
     shared_xy = data_reader.make_shared()
     shared_x, shared_y = shared_xy
     shared_y = T.cast(shared_y, 'int32')

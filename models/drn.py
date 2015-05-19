@@ -30,6 +30,7 @@ from layers.logistic_sgd import LogisticRegression
 from layers.mlp import HiddenLayer, DropoutHiddenLayer, _dropout_from_layer
 from layers.rnn import RnnLayer
 
+from io_func import smart_open
 from io_func.model_io import _nnet2file, _file2nnet
 
 class DNN(object):
@@ -63,7 +64,7 @@ class DNN(object):
         if input == None:
             self.x = T.matrix('x')
         else:
-            self.x = input 
+            self.x = input
         self.y = T.ivector('y')
 
         for i in xrange(self.hidden_layers_number):
@@ -84,7 +85,7 @@ class DNN(object):
                                         n_in=input_size,
                                         n_out=self.hidden_layers_sizes[i],
                                         W = W, b = b,
-                                        activation=self.activation) 
+                                        activation=self.activation)
             else:
                 if self.do_maxout == True:
                     hidden_layer = HiddenLayer(rng=numpy_rng,
@@ -114,7 +115,7 @@ class DNN(object):
             self.layers.append(self.logLayer)
             self.params.extend(self.logLayer.params)
             self.delta_params.extend(self.logLayer.delta_params)
-       
+
         # compute the cost for second phase of training,
         # defined as the negative log likelihood
         self.finetune_cost = self.logLayer.negative_log_likelihood(self.y)
@@ -244,7 +245,7 @@ class DNN(object):
         if output_layer_number == -1:
             output_layer_number = layer_number
 
-        fout = open(file_path, 'wb')
+        fout = smart_open(file_path, 'wb')
         for i in xrange(output_layer_number):
             activation_text = '<' + self.cfg.activation_text + '>'
             if i == (layer_number-1) and with_softmax:   # we assume that the last layer is a softmax layer

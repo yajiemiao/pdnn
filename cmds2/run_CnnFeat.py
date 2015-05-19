@@ -26,6 +26,7 @@ import theano
 import theano.tensor as T
 from theano.tensor.shared_randomstreams import RandomStreams
 
+from io_func import smart_open
 from io_func.model_io import _file2nnet, log
 from io_func.kaldi_feat import KaldiReadIn, KaldiWriteOut
 
@@ -49,7 +50,7 @@ if __name__ == '__main__':
     cnn_param_file = arguments['cnn_param_file']
     cnn_cfg_file = arguments['cnn_cfg_file']
     # network structure
-    cfg = cPickle.load(open(cnn_cfg_file,'r'))
+    cfg = cPickle.load(smart_open(cnn_cfg_file,'r'))
 
     conv_configs = cfg.conv_layer_configs
     conv_layer_number = len(conv_configs)

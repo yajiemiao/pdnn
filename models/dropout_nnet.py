@@ -29,11 +29,12 @@ from theano.tensor.shared_randomstreams import RandomStreams
 from layers.logistic_sgd import LogisticRegression
 from layers.mlp import HiddenLayer, DropoutHiddenLayer, _dropout_from_layer
 
+from io_func import smart_open
 from io_func.model_io import _nnet2file, _file2nnet
 
 class DNN_Dropout(object):
 
-    def __init__(self, numpy_rng, theano_rng=None, 
+    def __init__(self, numpy_rng, theano_rng=None,
                  cfg = None,
                  dnn_shared = None, shared_layers=[]):
 
@@ -45,7 +46,7 @@ class DNN_Dropout(object):
         self.cfg = cfg
         self.n_ins = cfg.n_ins; self.n_outs = cfg.n_outs
         self.hidden_layers_sizes = cfg.hidden_layers_sizes
-        self.hidden_layers_number = len(self.hidden_layers_sizes)        
+        self.hidden_layers_number = len(self.hidden_layers_sizes)
         self.activation = cfg.activation
 
         self.do_maxout = cfg.do_maxout; self.pool_size = cfg.pool_size
@@ -58,7 +59,7 @@ class DNN_Dropout(object):
         if not theano_rng:
             theano_rng = RandomStreams(numpy_rng.randint(2 ** 30))
         # allocate symbolic variables for the data
-        self.x = T.matrix('x') 
+        self.x = T.matrix('x')
         self.y = T.ivector('y')
 
         for i in xrange(self.hidden_layers_number):
@@ -210,7 +211,7 @@ class DNN_Dropout(object):
         if output_layer_number == -1:
             output_layer_number = layer_number
 
-        fout = open(file_path, 'wb')
+        fout = smart_open(file_path, 'wb')
         for i in xrange(output_layer_number):
             # decide the dropout factor for this layer
             dropout_factor = 0.0

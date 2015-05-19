@@ -26,6 +26,7 @@ import theano
 import theano.tensor as T
 from theano.tensor.shared_randomstreams import RandomStreams
 
+from io_func import smart_open
 from io_func.model_io import _file2nnet, log
 from io_func.kaldi_feat import KaldiReadIn, KaldiWriteOut
 
@@ -52,14 +53,14 @@ if __name__ == '__main__':
     layer_index = int(arguments['layer_index'])
 
     # load network configuration
-    cfg = cPickle.load(open(nnet_cfg,'r'))
+    cfg = cPickle.load(smart_open(nnet_cfg,'r'))
     cfg.init_activation()
 
     # set up the model with model config
     log('> ... setting up the model and loading parameters')
     numpy_rng = numpy.random.RandomState(89677)
     theano_rng = RandomStreams(numpy_rng.randint(2 ** 30))
-    cfg = cPickle.load(open(nnet_cfg,'r'))
+    cfg = cPickle.load(smart_open(nnet_cfg,'r'))
     model = None
     if cfg.model_type == 'DNN':
         model = DNN(numpy_rng=numpy_rng, theano_rng = theano_rng, cfg = cfg)

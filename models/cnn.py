@@ -34,11 +34,12 @@ from layers.mlp import HiddenLayer
 from layers.conv import ConvLayer, ConvLayerForward
 from dnn import DNN
 
+from io_func import smart_open
 
 class ConvLayer_Config(object):
     """configuration for a convolutional layer """
 
-    def __init__(self, input_shape=(3,1,28,28), filter_shape=(2, 1, 5, 5), 
+    def __init__(self, input_shape=(3,1,28,28), filter_shape=(2, 1, 5, 5),
                  poolsize=(1, 1), activation=T.tanh, output_shape=(3,1,28,28),
                  flatten = False):
         self.input_shape = input_shape
@@ -69,8 +70,8 @@ class CNN(object):
             self.x = T.matrix('x')
         else:
             self.x = input
-        self.y = T.ivector('y') 
-        
+        self.y = T.ivector('y')
+
         self.conv_layer_num = len(self.conv_layer_configs)
         for i in xrange(self.conv_layer_num):
             if i == 0:
@@ -105,7 +106,7 @@ class CNN(object):
     def write_conv_config(self, file_path_prefix):
         for i in xrange(len(self.conv_layer_configs)):
             self.conv_layer_configs[i]['activation'] = self.cfg.conv_activation_text
-            with open(file_path_prefix + '.' + str(i), 'wb') as fp:
+            with smart_open(file_path_prefix + '.' + str(i), 'wb') as fp:
                 json.dump(self.conv_layer_configs[i], fp, indent=2, sort_keys = True)
                 fp.flush()
 
