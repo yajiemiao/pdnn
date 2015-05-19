@@ -1,4 +1,4 @@
-# Copyright 2014    Yajie Miao    Carnegie Mellon University 
+# Copyright 2014    Yajie Miao    Carnegie Mellon University
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,20 +25,22 @@ import theano
 
 import struct
 
+from io_func import smart_open
+
 # Classes to read and write Kaldi features. They are used when PDNN passes Kaldi features
-# through trained models and saves network activation into Kaldi features. Currently we 
+# through trained models and saves network activation into Kaldi features. Currently we
 # are using them during decoding of convolutional networks.
 
 # Class to read Kaldi features. Each time, it reads one line of the .scp file
 # and reads in the corresponding features into a numpy matrix. It only supports
-# binary-formatted .ark files. Text and compressed .ark files are not supported. 
+# binary-formatted .ark files. Text and compressed .ark files are not supported.
 class KaldiReadIn(object):
 
     def __init__(self, scp_path):
 
         self.scp_path = scp_path
-        self.scp_file_read = open(self.scp_path,"r")
-        
+        self.scp_file_read = smart_open(self.scp_path,"r")
+
     def read_next_utt(self):
         next_scp_line = self.scp_file_read.readline()
         if next_scp_line == '' or next_scp_line == None:
@@ -46,7 +48,7 @@ class KaldiReadIn(object):
         utt_id, path_pos = next_scp_line.replace('\n','').split(' ')
         path, pos = path_pos.split(':')
 
-        ark_read_buffer = open(path, 'rb')
+        ark_read_buffer = smart_open(path, 'rb')
         ark_read_buffer.seek(int(pos),0)
         header = struct.unpack('<xcccc', ark_read_buffer.read(5))
         if header[0] != "B":
@@ -71,7 +73,7 @@ class KaldiWriteOut(object):
     def __init__(self, ark_path):
 
         self.ark_path = ark_path
-        self.ark_file_write = open(ark_path,"wb")
+        self.ark_file_write = smart_open(ark_path,"wb")
 
     def write_kaldi_mat(self, utt_id, utt_mat):
         utt_mat = numpy.asarray(utt_mat, dtype=numpy.float32)
@@ -80,7 +82,7 @@ class KaldiWriteOut(object):
         self.ark_file_write.write(struct.pack('<cxcccc', ' ','B','F','M',' '))
         self.ark_file_write.write(struct.pack('<bi', 4, rows))
         self.ark_file_write.write(struct.pack('<bi', 4, cols))
-        self.ark_file_write.write(utt_mat) 
+        self.ark_file_write.write(utt_mat)
 
     def close(self):
         self.ark_file_write.close()

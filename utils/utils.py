@@ -15,6 +15,7 @@
 
 import theano.tensor as T
 from learn_rates import LearningRateConstant, LearningRateExpDecay, LearningMinLrate, LearningFixedLrate
+from io_func import smart_open
 
 def string_2_bool(string):
     if string == 'true':
@@ -118,7 +119,7 @@ def parse_conv_spec(conv_spec, batch_size):
 
         conv_layer_configs.append(config)
     return conv_layer_configs
- 
+
 def parse_activation(act_str):
     if act_str == 'sigmoid':
         return T.nnet.sigmoid
@@ -143,13 +144,13 @@ def parse_two_integers(argument_str):
 # save and resume state of SdA and RBM training
 # the layer and epoch indexes are saved, each per line
 def save_two_integers(integers, file):
-    file_open = open(file, 'w')       # always overwrite
+    file_open = smart_open(file, 'w')       # always overwrite
     file_open.write(str(integers[0]) + '\n')
     file_open.write(str(integers[1]) + '\n')
-    file_open.close() 
+    file_open.close()
 
 def read_two_integers(file):
-    file_open = open(file, 'r')
+    file_open = smart_open(file, 'r')
     line = file_open.readline().replace('\n','')
     int1 = int(line)
     line = file_open.readline().replace('\n','')
@@ -163,7 +164,7 @@ def parse_data_spec_mtl(data_spec):
     task_split = field_split[0].split('|')
     data_spec_rest = data_spec.replace(field_split[0],'')
     data_spec_array = [task_split[n] + data_spec_rest for n in xrange(len(task_split))]
-    return data_spec_array 
+    return data_spec_array
 
 # parse network specification for multiple task learning
 def parse_nnet_spec_mtl(shared_spec, indiv_spec):

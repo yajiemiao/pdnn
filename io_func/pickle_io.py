@@ -1,4 +1,4 @@
-# Copyright 2013    Yajie Miao    Carnegie Mellon University 
+# Copyright 2013    Yajie Miao    Carnegie Mellon University
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import theano
 import theano.tensor as T
 from utils.utils import string_2_bool
 from model_io import log
+from io_func import smart_open
 
 class PickleDataRead(object):
 
@@ -43,10 +44,7 @@ class PickleDataRead(object):
     def load_next_partition(self, shared_xy):
         pfile_path = self.pfile_path_list[self.cur_pfile_index]
         if self.feat_mat is None or len(self.pfile_path_list) > 1:
-            if pfile_path.endswith('.gz'):
-                fopen = gzip.open(pfile_path, 'rb')
-            else:
-                fopen = open(pfile_path, 'rb')
+            fopen = smart_open(pfile_path, 'rb')
             self.feat_mat, self.label_vec = cPickle.load(fopen)
             fopen.close()
             shared_x, shared_y = shared_xy
@@ -75,7 +73,7 @@ class PickleDataRead(object):
     def make_shared(self):
         # define shared variables
         feat = numpy.zeros((10,10), dtype=theano.config.floatX)
-        label = numpy.zeros((10,), dtype=theano.config.floatX)        
+        label = numpy.zeros((10,), dtype=theano.config.floatX)
 
         shared_x = theano.shared(feat, name = 'x', borrow = True)
         shared_y = theano.shared(label, name = 'y', borrow = True)

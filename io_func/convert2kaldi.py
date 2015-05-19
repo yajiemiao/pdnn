@@ -1,4 +1,4 @@
-# Copyright 2013    Yajie Miao    Carnegie Mellon University 
+# Copyright 2013    Yajie Miao    Carnegie Mellon University
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,11 +20,13 @@ import sys
 from StringIO import StringIO
 import json
 
+from io_func import smart_open
+
 # Various functions to convert models into Kaldi formats
 def _nnet2kaldi(nnet_spec, set_layer_num = -1, filein='nnet.in',
                fileout='nnet.out', activation='sigmoid', withfinal=True):
 
-    elements = nnet_spec.split(":") 
+    elements = nnet_spec.split(":")
     layers = []
     for x in elements:
         layers.append(int(x))
@@ -34,9 +36,9 @@ def _nnet2kaldi(nnet_spec, set_layer_num = -1, filein='nnet.in',
     else:
         layer_num = set_layer_num + 1
     nnet_dict = {}
-    with open(filein, 'rb') as fp:
+    with smart_open(filein, 'rb') as fp:
         nnet_dict = json.load(fp)
-    fout = open(fileout, 'wb')
+    fout = smart_open(fileout, 'wb')
     for i in xrange(layer_num - 1):
         input_size = int(layers[i])
         output_size = int(layers[i + 1])
@@ -97,7 +99,7 @@ def _nnet2kaldi(nnet_spec, set_layer_num = -1, filein='nnet.in',
 
     fout.close();
 
-def _nnet2kaldi_maxout(nnet_spec, pool_size = 1, set_layer_num = -1, 
+def _nnet2kaldi_maxout(nnet_spec, pool_size = 1, set_layer_num = -1,
                       filein='nnet.in', fileout='nnet.out', activation='sigmoid', withfinal=True):
 
     elements = nnet_spec.split(':')
@@ -109,9 +111,9 @@ def _nnet2kaldi_maxout(nnet_spec, pool_size = 1, set_layer_num = -1,
     else:
         layer_num = set_layer_num + 1
     nnet_dict = {}
-    with open(filein, 'rb') as fp:
+    with smart_open(filein, 'rb') as fp:
         nnet_dict = json.load(fp)
-    fout = open(fileout, 'wb')
+    fout = smart_open(fileout, 'wb')
     for i in xrange(layer_num - 1):
         input_size = int(layers[i])
         output_size = int(layers[i + 1]) * pool_size

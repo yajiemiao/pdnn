@@ -1,4 +1,4 @@
-# Copyright 2014    Yajie Miao    Carnegie Mellon University 
+# Copyright 2014    Yajie Miao    Carnegie Mellon University
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import numpy
 import theano
 import theano.tensor as T
 from model_io import log
+from io_func import smart_open
 
 class KaldiDataRead(object):
 
@@ -58,12 +59,9 @@ class KaldiDataRead(object):
         self.feats = numpy.zeros((10,self.feat_dim), dtype=theano.config.floatX)
         self.labels = numpy.zeros((10,), dtype=numpy.int32)
 
-    # read the alignment of all the utterances and keep the alignment in CPU memory. 
+    # read the alignment of all the utterances and keep the alignment in CPU memory.
     def read_alignment(self):
-        if '.gz' in self.ali_file:
-            f_read = gzip.open(self.ali_file, 'r')
-        else:
-            f_read = open(self.ali_file, 'r')
+        f_read = smart_open(self.ali_file, 'r')
         for line in f_read:
             line = line.replace('\n','').strip()
             if len(line) < 1: # this is an empty line, skip
@@ -83,14 +81,11 @@ class KaldiDataRead(object):
             return '', None
         utt_id, path_pos = next_scp_line.replace('\n','').split(' ')
         path, pos = path_pos.split(':')
- 
-        if os.path.exists(path + '.gz'):
-            ark_read_buffer = gzip.open(path + '.gz', 'rb')
-        else:
-            ark_read_buffer = open(path, 'rb')
+
+        ark_read_buffer = smart_open(path, 'rb')
         ark_read_buffer.seek(int(pos),0)
-       
-        # now start to read the feature matrix into a numpy matrix 
+
+        # now start to read the feature matrix into a numpy matrix
         header = struct.unpack('<xcccc', ark_read_buffer.read(5))
         if header[0] != "B":
             print "Input .ark file is not binary"; exit(1)
@@ -105,16 +100,16 @@ class KaldiDataRead(object):
         ark_read_buffer.close()
 
         return utt_id, utt_mat
- 
+
     def is_finish(self):
         return self.end_reading
 
     def initialize_read(self, first_time_reading = False):
-        self.scp_file_read = open(self.scp_file, 'r')
+        self.scp_file_read = smart_open(self.scp_file, 'r')
         if first_time_reading:
             utt_id, utt_mat = self.read_next_utt()
             self.original_feat_dim = utt_mat.shape[1]
-            self.scp_file_read = open(self.scp_file, 'r')
+            self.scp_file_read = smart_open(self.scp_file, 'r')
 
             # compute the feature dimension
             self.feat_dim = self.original_feat_dim
@@ -129,7 +124,7 @@ class KaldiDataRead(object):
                 self.labels = numpy.zeros((self.max_frame_num,), dtype=numpy.int32)
             print self.original_feat_dim, self.feat_dim
         self.end_reading = False
-       
+
     # make context of a numpy matrix
     def make_context_matrix(self, mat):
         rows, cols = mat.shape
@@ -146,21 +141,21 @@ class KaldiDataRead(object):
                 mat_cxt[t, j*cols:(j+1)*cols] = mat[t2]
         return mat_cxt
 
-    # load the n-th (0 indexed) partition to the GPU memory 
+    # load the n-th (0 indexed) partition to the GPU memory
     def load_next_partition(self, shared_xy):
         shared_x, shared_y = shared_xy
         read_frame_num = 0
         while True:
             utt_id, utt_mat = self.read_next_utt()
             if utt_id == '':
-                self.end_reading = True 
+                self.end_reading = True
                 break
             if self.ali_provided and (self.alignment.has_key(utt_id) is False):
                 continue
             rows, cols = utt_mat.shape
-           
+
             ali_utt = None
-            if self.ali_provided: 
+            if self.ali_provided:
                 ali_utt = self.alignment[utt_id]
                 if ali_utt.shape[0] != rows:
                     continue
@@ -181,7 +176,7 @@ class KaldiDataRead(object):
             if self.ali_provided:
                 numpy.random.seed(18877)
                 numpy.random.shuffle(self.labels[0:read_frame_num])
-        
+
         shared_x.set_value(self.feats[0:read_frame_num], borrow=True)
         if self.ali_provided:
             shared_y.set_value(self.labels[0:read_frame_num], borrow=True)

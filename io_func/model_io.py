@@ -1,4 +1,4 @@
-# Copyright 2013    Yajie Miao    Carnegie Mellon University 
+# Copyright 2013    Yajie Miao    Carnegie Mellon University
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,6 +28,8 @@ import theano
 import theano.tensor as T
 
 from datetime import datetime
+
+from io_func import smart_open
 
 # print log to standard output
 def log(string):
@@ -70,10 +72,10 @@ def _nnet2file(layers, set_layer_num = -1, filename='nnet.out', start_layer = 0,
 
        dict_a = 'b' + str(i)
        nnet_dict[dict_a] = array_2_string(layer.b.get_value())
-    
-    with open(filename, 'wb') as fp:
+
+    with smart_open(filename, 'wb') as fp:
         json.dump(nnet_dict, fp, indent=2, sort_keys = True)
-        fp.flush() 
+        fp.flush()
 
 
 # save the config classes; since we are using pickle to serialize the whole class, it's better to set the
@@ -85,7 +87,7 @@ def _cfg2file(cfg, filename='cfg.out'):
     cfg.activation = None  # saving the rectifier function causes errors; thus we don't save the activation function
                            # the activation function is initialized from the activation text ("sigmoid") when the network
                            # configuration is loaded
-    with open(filename, "wb") as output:
+    with smart_open(filename, "wb") as output:
         cPickle.dump(cfg, output, cPickle.HIGHEST_PROTOCOL)
 
 def _file2nnet(layers, set_layer_num = -1, filename='nnet.in',  factor=1.0):
@@ -94,7 +96,7 @@ def _file2nnet(layers, set_layer_num = -1, filename='nnet.in',  factor=1.0):
     if set_layer_num == -1:
         set_layer_num = n_layers
 
-    with open(filename, 'rb') as fp:
+    with smart_open(filename, 'rb') as fp:
         nnet_dict = json.load(fp)
     for i in xrange(set_layer_num):
         dict_a = 'W' + str(i)
@@ -109,7 +111,7 @@ def _file2nnet(layers, set_layer_num = -1, filename='nnet.in',  factor=1.0):
                     new_dict_a = dict_a + ' ' + str(next_X) + ' ' + str(this_X)
                     W_array[next_X, this_X, :, :] = factor * np.asarray(string_2_array(nnet_dict[new_dict_a]), dtype=theano.config.floatX)
             layer.W.set_value(W_array)
-        dict_a = 'b' + str(i) 
+        dict_a = 'b' + str(i)
         layer.b.set_value(np.asarray(string_2_array(nnet_dict[dict_a]), dtype=theano.config.floatX))
 
 def _cnn2file(conv_layers, filename='nnet.out', input_factor = 1.0, factor=[]):
@@ -118,7 +120,7 @@ def _cnn2file(conv_layers, filename='nnet.out', input_factor = 1.0, factor=[]):
     for i in xrange(n_layers):
        conv_layer = conv_layers[i]
        filter_shape = conv_layer.filter_shape
-       
+
        dropout_factor = 0.0
        if i == 0:
            dropout_factor = input_factor
@@ -127,13 +129,13 @@ def _cnn2file(conv_layers, filename='nnet.out', input_factor = 1.0, factor=[]):
 
        for next_X in xrange(filter_shape[0]):
            for this_X in xrange(filter_shape[1]):
-               dict_a = 'W' + str(i) + ' ' + str(next_X) + ' ' + str(this_X) 
+               dict_a = 'W' + str(i) + ' ' + str(next_X) + ' ' + str(this_X)
                nnet_dict[dict_a] = array_2_string(dropout_factor * (conv_layer.W.get_value())[next_X, this_X])
 
        dict_a = 'b' + str(i)
        nnet_dict[dict_a] = array_2_string(conv_layer.b.get_value())
-    
-    with open(filename, 'wb') as fp:
+
+    with smart_open(filename, 'wb') as fp:
         json.dump(nnet_dict, fp, indent=2, sort_keys = True)
         fp.flush()
 
@@ -141,7 +143,7 @@ def _file2cnn(conv_layers, filename='nnet.in', factor=1.0):
     n_layers = len(conv_layers)
     nnet_dict = {}
 
-    with open(filename, 'rb') as fp:
+    with smart_open(filename, 'rb') as fp:
         nnet_dict = json.load(fp)
     for i in xrange(n_layers):
         conv_layer = conv_layers[i]
@@ -153,7 +155,7 @@ def _file2cnn(conv_layers, filename='nnet.in', factor=1.0):
                 dict_a = 'W' + str(i) + ' ' + str(next_X) + ' ' + str(this_X)
                 W_array[next_X, this_X, :, :] = factor * np.asarray(string_2_array(nnet_dict[dict_a]))
 
-        conv_layer.W.set_value(W_array) 
+        conv_layer.W.set_value(W_array)
 
         dict_a = 'b' + str(i)
-        conv_layer.b.set_value(np.asarray(string_2_array(nnet_dict[dict_a]), dtype=theano.config.floatX)) 
+        conv_layer.b.set_value(np.asarray(string_2_array(nnet_dict[dict_a]), dtype=theano.config.floatX))
