@@ -35,6 +35,8 @@ def read_data_args(data_spec):
     dataset_args['random'] = False
     dataset_args['stream'] = False
     dataset_args['partition'] = 1024 * 1024 * 600  # by default the partition size is 600m if stream is True
+    dataset_args['lcxt'] = 0
+    dataset_args['rcxt'] = 0
 
     # the type of the data: pickle, pfile   TO-DO: HDF5
     if '.pickle' in data_spec or '.pkl' in data_spec:
@@ -59,8 +61,37 @@ def read_data_args(data_spec):
             dataset_args['random'] = string_2_bool(value)
         elif key == 'label':
             dataset_args['label'] = value
+        elif key == 'lcxt':
+            dataset_args['lcxt'] = int(value)
+        elif key == 'rcxt':
+            dataset_args['rcxt'] = int(value)
+        elif key == 'context':
+            value = tuple(int(x) for x in value.split(':'))
+            if len(value) == 1: value += value
+            dataset_args['lcxt'], dataset_args['rcxt'] = value
+        elif key == 'ignore-label':
+            ignore = set()
+            for x in value.split(':'):
+                if '-' in x:
+                    start, end = (int(y) for y in x.split('-'))
+                    ignore.update(range(start, end + 1))
+                else:
+                    ignore.add(int(x))
+            dataset_args['ignore-label'] = ignore
+        elif key == 'map-label':
+            map = {}
+            for x in value.split('/'):
+                source, target = x.split(':')
+                target = int(target)
+                if '-' in source:
+                    start, end = (int(y) for y in source.split('-'))
+                    for i in range(start, end + 1):
+                        map[i] = target
+                else:
+                    map[int(source)] = target
+            dataset_args['map-label'] = map
         else:
-            dataset_args[key] = value  # left context & right context; maybe different
+            dataset_args[key] = value
     return pfile_path_list, dataset_args
 
 def read_dataset(file_path_list, read_opts):
