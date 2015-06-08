@@ -23,7 +23,7 @@ import theano
 import theano.tensor as T
 from utils.utils import string_2_bool
 from model_io import log
-from io_func import smart_open
+from io_func import smart_open, preprocess_feature_and_label, shuffle_feature_and_label
 
 class PickleDataRead(object):
 
@@ -49,13 +49,13 @@ class PickleDataRead(object):
             fopen.close()
             shared_x, shared_y = shared_xy
 
-            if self.read_opts['random']:  # randomly shuffle features and labels in the *same* order
-                numpy.random.seed(18877)
-                numpy.random.shuffle(self.feat_mat)
-                numpy.random.seed(18877)
-                numpy.random.shuffle(self.label_vec)
+            self.feat_mat, self.label_vec = \
+                preprocess_feature_and_label(self.feat_mat, self.label_vec, self.read_opts)
+            if self.read_opts['random']:
+                shuffle_feature_and_label(self.feat_mat, self.label_vec)
+
             shared_x.set_value(self.feat_mat, borrow=True)
-            shared_y.set_value(self.label_vec.astype(numpy.float32), borrow=True)
+            shared_y.set_value(self.label_vec.astype(theano.config.floatX), borrow=True)
 
         self.cur_frame_num = len(self.feat_mat)
         self.cur_pfile_index += 1

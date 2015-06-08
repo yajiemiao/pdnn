@@ -23,7 +23,7 @@ import numpy
 import theano
 import theano.tensor as T
 from model_io import log
-from io_func import smart_open
+from io_func import smart_open, preprocess_feature_and_label, shuffle_feature_and_label
 
 class KaldiDataRead(object):
 
@@ -37,13 +37,6 @@ class KaldiDataRead(object):
         else:
             self.ali_file = ''
             self.ali_provided = False
-
-        # left and right context for feature splicing
-        self.left_context = 0; self.right_context = 0
-        if read_opts.has_key('lcxt'):
-            self.left_context = int(read_opts['lcxt'])
-        if read_opts.has_key('rcxt'):
-            self.right_context = int(read_opts['rcxt'])
 
         self.scp_file_read = None
         self.scp_cur_pos = None
@@ -112,9 +105,7 @@ class KaldiDataRead(object):
             self.scp_file_read = smart_open(self.scp_file, 'r')
 
             # compute the feature dimension
-            self.feat_dim = self.original_feat_dim
-            if self.left_context > 0 or self.right_context > 0:
-                self.feat_dim = (self.left_context + 1 + self.right_context) * self.original_feat_dim
+            self.feat_dim = (self.read_opts['lcxt'] + 1 + self.read_opts['rcxt']) * self.original_feat_dim
 
             # allocate the feat matrix according to the specified partition size
             self.max_frame_num = self.read_opts['partition'] / (self.feat_dim * 4)
@@ -122,24 +113,8 @@ class KaldiDataRead(object):
             if self.ali_provided:
                 self.read_alignment()
                 self.labels = numpy.zeros((self.max_frame_num,), dtype=numpy.int32)
-            print self.original_feat_dim, self.feat_dim
-        self.end_reading = False
 
-    # make context of a numpy matrix
-    def make_context_matrix(self, mat):
-        rows, cols = mat.shape
-        cxt_size = self.left_context + 1 + self.right_context
-        cols_cxt = cxt_size * cols
-        mat_cxt = numpy.zeros((rows, cols_cxt), dtype=theano.config.floatX)
-        for t in xrange(rows):
-            for j in xrange(cxt_size):
-                t2 = t + j - self.left_context
-                if t2 < 0:
-                    t2 = 0
-                if t2 >= rows:
-                    t2 = rows - 1
-                mat_cxt[t, j*cols:(j+1)*cols] = mat[t2]
-        return mat_cxt
+        self.end_reading = False
 
     # load the n-th (0 indexed) partition to the GPU memory
     def load_next_partition(self, shared_xy):
@@ -152,30 +127,29 @@ class KaldiDataRead(object):
                 break
             if self.ali_provided and (self.alignment.has_key(utt_id) is False):
                 continue
-            rows, cols = utt_mat.shape
+            rows = utt_mat.shape[0]
 
-            ali_utt = None
             if self.ali_provided:
                 ali_utt = self.alignment[utt_id]
                 if ali_utt.shape[0] != rows:
                     continue
+            else:
+                ali_utt = None
+
+            utt_mat, ali_utt = preprocess_feature_and_label(utt_mat, ali_utt, self.read_opts)
+            rows = utt_mat.shape[0]
+
             if read_frame_num + rows > self.max_frame_num:
                 self.scp_file_read.seek(self.scp_cur_pos)
                 break
-            else:
-                if self.left_context > 0 or self.right_context > 0:
-                    utt_mat = self.make_context_matrix(utt_mat)
-                self.feats[read_frame_num:(read_frame_num+rows)] = utt_mat
-                if self.ali_provided:
-                    self.labels[read_frame_num:(read_frame_num+rows)] = ali_utt
-                read_frame_num += rows
 
-        if self.read_opts['random']:  # randomly shuffle features and labels in the *same* order
-            numpy.random.seed(18877)
-            numpy.random.shuffle(self.feats[0:read_frame_num])
+            self.feats[read_frame_num:(read_frame_num+rows)] = utt_mat
             if self.ali_provided:
-                numpy.random.seed(18877)
-                numpy.random.shuffle(self.labels[0:read_frame_num])
+                self.labels[read_frame_num:(read_frame_num+rows)] = ali_utt
+            read_frame_num += rows
+
+        if self.read_opts['random']:
+            shuffle_feature_and_label(self.feats[0:read_frame_num], self.labels[0:read_frame_num])
 
         shared_x.set_value(self.feats[0:read_frame_num], borrow=True)
         if self.ali_provided:

@@ -18,10 +18,7 @@ from learn_rates import LearningRateConstant, LearningRateExpDecay, LearningMinL
 from io_func import smart_open
 
 def string_2_bool(string):
-    if string == 'true':
-        return True
-    if string == 'false':
-        return False
+    return len(string) > 0 and string[0] in 'TtYy'      # True, true, Yes, yes
 
 def parse_arguments(arg_elements):
     args = {}
@@ -125,7 +122,7 @@ def parse_activation(act_str):
         return T.nnet.sigmoid
     if act_str == 'tanh':
         return T.tanh
-    if act_str == 'rectifier':
+    if act_str == 'rectifier' or act_str == 'relu':
         return lambda x: T.maximum(0.0, x)
     return T.nnet.sigmoid
 
