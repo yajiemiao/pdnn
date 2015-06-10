@@ -169,9 +169,6 @@ class PfileDataRead(object):
         feat = self.feat_mats[0]
         label = self.label_vecs[0].astype(theano.config.floatX)
 
-        if self.read_opts['random']:
-            shuffle_feature_and_label(feat, label)
-
         shared_x = theano.shared(feat, name = 'x', borrow = True)
         shared_y = theano.shared(label, name = 'y', borrow = True)
         return shared_x, shared_y
