@@ -1,3 +1,18 @@
+# Copyright 2015    Yun Wang      Carnegie Mellon University
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#  http://www.apache.org/licenses/LICENSE-2.0
+#
+# THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+# WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+# MERCHANTABLITY OR NON-INFRINGEMENT.
+# See the Apache 2 License for the specific language governing permissions and
+# limitations under the License.
+
 import os.path
 import gzip
 import bz2
@@ -62,3 +77,20 @@ def shuffle_feature_and_label(feature, label):
     numpy.random.shuffle(feature)
     numpy.random.seed(seed)
     numpy.random.shuffle(label)
+
+def shuffle_across_partitions(feature_list, label_list):
+    '''
+    Randomly shuffles features and labels in the same order across partitions.
+    '''
+    total = sum(len(x) for x in feature_list)
+    n = len(feature_list[0])    # Partition size
+    buffer = numpy.empty_like(feature_list[0][0])
+    seed = 18877
+    numpy.random.seed(seed)
+    for i in xrange(total - 1, 0, -1):
+        j = numpy.random.randint(i + 1)
+        buffer[:] = feature_list[i / n][i % n]
+        feature_list[i / n][i % n] = feature_list[j / n][j % n]
+        feature_list[j / n][j % n] = buffer
+        label_list[i / n][i % n], label_list[j / n][j % n] = \
+            label_list[j / n][j % n], label_list[i / n][i % n]

@@ -1,4 +1,5 @@
 # Copyright 2013    Yajie Miao    Carnegie Mellon University
+#           2015    Yun Wang      Carnegie Mellon University
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,6 +28,29 @@ def parse_arguments(arg_elements):
         key = arg_elements[2*i].replace("--","").replace("-", "_");
         args[key] = arg_elements[2*i+1]
     return args
+
+def parse_ignore_label(ignore_string):
+    ignore_set = set()
+    for x in ignore_string.split(':'):
+        if '-' in x:
+            start, end = (int(y) for y in x.split('-'))
+            ignore_set.update(range(start, end + 1))
+        else:
+            ignore_set.add(int(x))
+    return ignore_set
+
+def parse_map_label(map_string):
+    map_dict = {}
+    for x in map_string.split('/'):
+        source, target = x.split(':')
+        target = int(target)
+        if '-' in source:
+            start, end = (int(y) for y in source.split('-'))
+            for i in range(start, end + 1):
+                map_dict[i] = target
+        else:
+            map_dict[int(source)] = target
+    return map_dict
 
 def parse_lrate(lrate_string):
     elements = lrate_string.split(":")
@@ -63,7 +87,6 @@ def parse_lrate(lrate_string):
                                  init_error = 100,
                                  min_epoch_decay_start=int(elements[4]))
         return lrate
-
 
     # 'FD:0.08:0.5:10,6'
     if elements[0] == 'FD':  # Min-rate NewBob
@@ -118,6 +141,8 @@ def parse_conv_spec(conv_spec, batch_size):
     return conv_layer_configs
 
 def parse_activation(act_str):
+    if act_str == 'linear':
+        return lambda x: x
     if act_str == 'sigmoid':
         return T.nnet.sigmoid
     if act_str == 'tanh':

@@ -1,4 +1,5 @@
 # Copyright 2013    Yajie Miao    Carnegie Mellon University
+#           2015    Yun Wang      Carnegie Mellon University
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +22,7 @@ import glob
 import numpy
 import theano
 import theano.tensor as T
-from utils.utils import string_2_bool
+from utils.utils import string_2_bool, parse_ignore_label, parse_map_label
 from pfile_io import PfileDataRead, PfileDataReadStream
 from pickle_io import PickleDataRead
 from kaldi_io import KaldiDataRead
@@ -70,26 +71,9 @@ def read_data_args(data_spec):
             if len(value) == 1: value += value
             dataset_args['lcxt'], dataset_args['rcxt'] = value
         elif key == 'ignore-label':
-            ignore = set()
-            for x in value.split(':'):
-                if '-' in x:
-                    start, end = (int(y) for y in x.split('-'))
-                    ignore.update(range(start, end + 1))
-                else:
-                    ignore.add(int(x))
-            dataset_args['ignore-label'] = ignore
+            dataset_args['ignore-label'] = parse_ignore_label(value)
         elif key == 'map-label':
-            map = {}
-            for x in value.split('/'):
-                source, target = x.split(':')
-                target = int(target)
-                if '-' in source:
-                    start, end = (int(y) for y in source.split('-'))
-                    for i in range(start, end + 1):
-                        map[i] = target
-                else:
-                    map[int(source)] = target
-            dataset_args['map-label'] = map
+            dataset_args['map-label'] = parse_map_label(value)
         else:
             dataset_args[key] = value
     return pfile_path_list, dataset_args

@@ -1,4 +1,5 @@
 # Copyright 2014    Yajie Miao    Carnegie Mellon University
+#           2015    Yun Wang      Carnegie Mellon University
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -59,7 +60,7 @@ class NetworkConfig():
         self.test_sets = None
         self.test_xy = None
         self.test_x = None
-        self.test_y = None 
+        self.test_y = None
 
         # specifically for DNN
         self.n_ins = 0
@@ -70,13 +71,13 @@ class NetworkConfig():
         # specifically for DNN_SAT
         self.ivec_n_ins = 0
         self.ivec_hidden_layers_sizes = []
-        self.ivec_n_outs = 0 
+        self.ivec_n_outs = 0
 
         # specifically for convolutional networks
         self.conv_layer_configs = []
         self.conv_activation = T.nnet.sigmoid
         self.conv_activation_text = 'sigmoid'
-        self.use_fast = False 
+        self.use_fast = False
 
         # number of epochs between model saving (for later model resuming)
         self.model_save_step = 1
@@ -102,13 +103,19 @@ class NetworkConfig():
         self.activation = parse_activation(self.activation_text)
 
     def parse_config_common(self, arguments):
-        # parse batch_size, momentum and learning rate 
+        # parse batch_size, momentum, learning rate and regularization
         if arguments.has_key('batch_size'):
             self.batch_size = int(arguments['batch_size'])
         if arguments.has_key('momentum'):
             self.momentum = float(arguments['momentum'])
         if arguments.has_key('lrate'):
             self.lrate = parse_lrate(arguments['lrate'])
+        if arguments.has_key('l1_reg'):
+            self.l1_reg = float(arguments['l1_reg'])
+        if arguments.has_key('l2_reg'):
+            self.l2_reg = float(arguments['l2_reg'])
+        if arguments.has_key('max_col_norm'):
+            self.max_col_norm = float(arguments['max_col_norm'])
 
         # parse activation function, including maxout
         if arguments.has_key('activation'):
@@ -130,7 +137,7 @@ class NetworkConfig():
                 self.input_dropout_factor = float(arguments['input_dropout_factor'])
 
         if arguments.has_key('cfg_output_file'):
-            self.cfg_output_file = arguments['cfg_output_file'] 
+            self.cfg_output_file = arguments['cfg_output_file']
         if arguments.has_key('param_output_file'):
             self.param_output_file = arguments['param_output_file']
         if arguments.has_key('kaldi_output_file'):
@@ -161,7 +168,7 @@ class NetworkConfig():
             self.conv_activation_text = arguments['conv_activation']
             self.conv_activation = parse_activation(arguments['conv_activation'])
             # maxout not supported yet
-        # whether we use the fast version of convolution 
+        # whether we use the fast version of convolution
         if arguments.has_key('use_fast'):
             self.use_fast = string_2_bool(arguments['use_fast'])
 

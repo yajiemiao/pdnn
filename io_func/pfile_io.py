@@ -1,4 +1,5 @@
 # Copyright 2013    Yajie Miao    Carnegie Mellon University
+#           2015    Yun Wang      Carnegie Mellon University
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,7 +25,7 @@ import theano
 import theano.tensor as T
 from utils.utils import string_2_bool
 from model_io import log
-from io_func import smart_open, preprocess_feature_and_label, shuffle_feature_and_label
+from io_func import smart_open, preprocess_feature_and_label, shuffle_feature_and_label, shuffle_across_partitions
 
 class PfileDataRead(object):
 
@@ -120,8 +121,7 @@ class PfileDataRead(object):
         self.file_read.close()
         self.partition_num = len(self.feat_mats)
         if self.read_opts['random']:
-            for i in range(self.partition_num):
-                shuffle_feature_and_label(self.feat_mats[i], self.label_vecs[i])
+            shuffle_across_partitions(self.feat_mats, self.label_vecs)
 
     def load_next_partition(self, shared_xy):
         feat = self.feat_mats[self.partition_index]
