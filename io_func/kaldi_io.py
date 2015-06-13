@@ -47,11 +47,9 @@ class KaldiDataRead(object):
         self.cur_frame_num = 1024
         self.alignment = {}
 
-        self.max_frame_num = 0
-
         # store features and labels for each data partition
-        self.feats = numpy.zeros((10,self.feat_dim), dtype=theano.config.floatX)
-        self.labels = numpy.zeros((10,), dtype=numpy.int32)
+        self.feat = numpy.zeros((10, self.feat_dim), dtype = theano.config.floatX)
+        self.label = numpy.zeros(10, dtype = numpy.int32)
 
     # read the alignment of all the utterances and keep the alignment in CPU memory.
     def read_alignment(self):
@@ -110,43 +108,65 @@ class KaldiDataRead(object):
 
             # allocate the feat matrix according to the specified partition size
             self.max_frame_num = self.read_opts['partition'] / (self.feat_dim * 4)
-            self.feats = numpy.zeros((self.max_frame_num, self.feat_dim), dtype=theano.config.floatX)
+            self.feats = numpy.zeros((self.max_frame_num, self.feat_dim), dtype = theano.config.floatX)
             if self.ali_provided:
                 self.read_alignment()
-                self.labels = numpy.zeros((self.max_frame_num,), dtype=numpy.int32)
+                self.labels = numpy.zeros(self.max_frame_num, dtype = numpy.int32)
 
         self.end_reading = False
+        self.feat_buffer = None
+        self.label_buffer = None
 
     # load the n-th (0 indexed) partition to the GPU memory
     def load_next_partition(self, shared_xy):
         shared_x, shared_y = shared_xy
-        read_frame_num = 0
-        while True:
+
+        if self.feat_buffer is None:
+            read_frame_num = 0
+        else:   # An utterance hasn't been completely consumed yet
+            read_frame_num = min(self.max_frame_num, len(self.feat_buffer))
+            self.feats[0:read_frame_num] = self.feat_buffer[0:read_frame_num]
+            if self.ali_provided:
+                self.labels[0:read_frame_num] = self.label_buffer[0:read_frame_num]
+            if read_frame_num == len(self.feat_buffer):
+                self.feat_buffer = None
+                self.label_buffer = None
+            else:
+                self.feat_buffer = self.feat_buffer[read_frame_num:]
+                if self.ali_provided:
+                    self.label_buffer = self.label_buffer[read_frame_num:]
+
+        while read_frame_num < self.max_frame_num:
             utt_id, utt_mat = self.read_next_utt()
-            if utt_id == '':
+            if utt_id == '':    # No more utterances available
                 self.end_reading = True
                 break
             if self.ali_provided and (self.alignment.has_key(utt_id) is False):
                 continue
-            rows = utt_mat.shape[0]
+            rows = len(utt_mat)
 
             if self.ali_provided:
                 ali_utt = self.alignment[utt_id]
-                if ali_utt.shape[0] != rows:
+                if len(ali_utt) != rows:
                     continue
             else:
                 ali_utt = None
 
             utt_mat, ali_utt = preprocess_feature_and_label(utt_mat, ali_utt, self.read_opts)
-            rows = utt_mat.shape[0]
+            rows = len(utt_mat)
 
             if read_frame_num + rows > self.max_frame_num:
-                self.scp_file_read.seek(self.scp_cur_pos)
-                break
+                # Utterance won't fit in current partition, use some frames and keep the rest for the next partition
+                rows = self.max_frame_num - read_frame_num
+                self.feat_buffer = utt_mat[rows:]
+                utt_mat = utt_mat[:rows]
+                if self.ali_provided:
+                    self.label_buffer = ali_utt[rows:]
+                    ali_utt = ali_utt[:rows]
 
-            self.feats[read_frame_num:(read_frame_num+rows)] = utt_mat
+            self.feats[read_frame_num:(read_frame_num + rows)] = utt_mat
             if self.ali_provided:
-                self.labels[read_frame_num:(read_frame_num+rows)] = ali_utt
+                self.labels[read_frame_num:(read_frame_num + rows)] = ali_utt
             read_frame_num += rows
 
         if self.read_opts['random']:

@@ -47,14 +47,6 @@ class PfileDataRead(object):
         self.total_frame_num = 0
         self.partition_num = 0
         self.frame_per_partition = 0
-
-        # store number of frames, features and labels for each data partition
-        self.feat_mats = []
-        self.label_vecs = []
-
-        # other variables to be consistent with PfileDataReadStream
-        self.partition_index = 0
-        self.cur_frame_num = 0
         self.end_reading = False
 
     # read pfile information from the header part
@@ -96,6 +88,8 @@ class PfileDataRead(object):
         sentence_offset = struct.unpack(">%di" % (self.num_sentences + 1), self.file_read.read(4 * (self.num_sentences + 1)))
 
         # Read the data
+        self.feat_mats = []
+        self.label_vecs = []
         self.file_read.seek(self.header_size)
         for i in xrange(self.num_sentences):
             num_frames = sentence_offset[i+1] - sentence_offset[i]
@@ -108,20 +102,27 @@ class PfileDataRead(object):
             feat_mat = numpy.asarray(sentence_array['d'])
             label_vec = numpy.asarray(sentence_array['l'])
             feat_mat, label_vec = preprocess_feature_and_label(feat_mat, label_vec, self.read_opts)
-            if len(self.feat_mats) > 0 and len(self.feat_mats[-1]) < self.frame_per_partition:
-                num_frames = min(len(feat_mat), self.frame_per_partition - len(self.feat_mats[-1]))
-                self.feat_mats[-1] = numpy.concatenate((self.feat_mats[-1], feat_mat[:num_frames]))
-                self.label_vecs[-1] = numpy.concatenate((self.label_vecs[-1], label_vec[:num_frames]))
+            if len(self.feat_mats) > 0 and read_frames < self.frame_per_partition:
+                num_frames = min(len(feat_mat), self.frame_per_partition - read_frames)
+                self.feat_mats[-1][read_frames : read_frames + num_frames] = feat_mat[:num_frames]
+                self.label_vecs[-1][read_frames : read_frames + num_frames] = label_vec[:num_frames]
                 feat_mat = feat_mat[num_frames:]
                 label_vec = label_vec[num_frames:]
+                read_frames += num_frames
             if len(feat_mat) > 0:
-                self.feat_mats.append(feat_mat)
-                self.label_vecs.append(label_vec)
+                read_frames = len(feat_mat)
+                self.feat_mats.append(numpy.zeros((self.frame_per_partition, self.feat_dim), dtype = theano.config.floatX))
+                self.label_vecs.append(numpy.zeros(self.frame_per_partition, dtype = numpy.int32))
+                self.feat_mats[-1][:read_frames] = feat_mat
+                self.label_vecs[-1][:read_frames] = label_vec
         # finish reading; close the file
         self.file_read.close()
-        self.partition_num = len(self.feat_mats)
+        self.feat_mats[-1] = self.feat_mats[-1][:read_frames]
+        self.label_vecs[-1] = self.label_vecs[-1][:read_frames]
         if self.read_opts['random']:
             shuffle_across_partitions(self.feat_mats, self.label_vecs)
+        self.partition_num = len(self.feat_mats)
+        self.partition_index = 0
 
     def load_next_partition(self, shared_xy):
         feat = self.feat_mats[self.partition_index]
@@ -189,14 +190,10 @@ class PfileDataReadStream(object):
         self.label_start_column = 442
         self.num_labels = 1
 
-        # markers while reading data
-        self.partition_num = 0
-        self.frame_per_partition = 0
+        # store features and labels for each data partition
+        self.feat = numpy.zeros((10, self.feat_dim), dtype = theano.config.floatX)
+        self.label = numpy.zeros(10, dtype = numpy.int32)
 
-        # store number of frames, features and labels for each data partition
-        self.feat = numpy.zeros((10,self.feat_dim), dtype=theano.config.floatX)
-        self.label = numpy.zeros((10,), dtype=theano.config.floatX)
-        self.cur_frame_num = 0
         self.end_reading = False
 
     # read pfile information from the header part and the sentence index
@@ -246,8 +243,13 @@ class PfileDataReadStream(object):
 
         self.file_read.seek(self.header_size, 0)
         self.sentence_index = 0
-        self.feat_buffer = numpy.zeros((0, self.feat_dim), dtype = theano.config.floatX)
-        self.label_buffer = numpy.zeros((0,), dtype = 'int')
+
+        if first_time_reading:
+            self.feat = numpy.zeros((self.frame_per_partition, self.feat_dim), dtype = theano.config.floatX)
+            self.label = numpy.zeros(self.frame_per_partition, dtype = numpy.int32)
+
+        self.feat_buffer = None
+        self.label_buffer = None
 
     # load the n-th (0 indexed) partition to the GPU memory
     def load_next_partition(self, shared_xy):
@@ -259,7 +261,20 @@ class PfileDataReadStream(object):
                                 'formats': [('>f', self.original_feat_dim), '>i'],
                                 'offsets': [self.feat_start_column * 4, self.label_start_column * 4]})
 
-        while len(self.feat_buffer) < self.frame_per_partition and self.sentence_index < self.num_sentences:
+        if self.feat_buffer is None:
+            read_frames = 0
+        else:   # An utterance hasn't been completely consumed yet
+            read_frames = min(self.frame_per_partition, len(self.feat_buffer))
+            self.feat[0:read_frames] = self.feat_buffer[0:read_frames]
+            self.label[0:read_frames] = self.label_buffer[0:read_frames]
+            if read_frames == len(self.feat_buffer):
+                self.feat_buffer = None
+                self.label_buffer = None
+            else:
+                self.feat_buffer = self.feat_buffer[read_frames:]
+                self.label_buffer = self.label_buffer[read_frames:]
+
+        while read_frames < self.frame_per_partition and self.sentence_index < self.num_sentences:
             num_frames = self.sentence_offset[self.sentence_index + 1] - self.sentence_offset[self.sentence_index]
             if self.file_read is file:  # Not a compressed file
                 sentence_array = numpy.fromfile(self.file_read, self.dtype, num_frames)
@@ -270,24 +285,29 @@ class PfileDataReadStream(object):
             feat_mat = numpy.asarray(sentence_array['d'])
             label_vec = numpy.asarray(sentence_array['l'])
             feat_mat, label_vec = preprocess_feature_and_label(feat_mat, label_vec, self.read_opts)
-            self.feat_buffer = numpy.concatenate((self.feat_buffer, feat_mat))
-            self.label_buffer = numpy.concatenate((self.label_buffer, label_vec))
+            num_frames = len(feat_mat)
+
+            if read_frames + num_frames > self.frame_per_partition:
+                # Utterance won't fit in current partition, use some frames and keep the rest for the next partition
+                num_frames = self.frame_per_partition - read_frames
+                self.feat_buffer = feat_mat[num_frames:]
+                self.label_buffer = label_vec[num_frames:]
+                feat_mat = feat_mat[:num_frames]
+                label_vec = label_vec[:num_frames]
+
+            self.feat[read_frames:(read_frames + num_frames)] = feat_mat
+            self.label[read_frames:(read_frames + num_frames)] = label_vec
+            read_frames += num_frames
             self.sentence_index += 1
 
-        self.feat = self.feat_buffer[:self.frame_per_partition].astype(theano.config.floatX)
-        self.label = self.label_buffer[:self.frame_per_partition].astype(theano.config.floatX)
-        self.feat_buffer = self.feat_buffer[self.frame_per_partition:]
-        self.label_buffer = self.label_buffer[self.frame_per_partition:]
-
-        self.cur_frame_num = len(self.feat)
-
         if self.read_opts['random']:
-            shuffle_feature_and_label(self.feat, self.label)
+            shuffle_feature_and_label(self.feat[:read_frames], self.label[:read_frames])
 
         shared_x.set_value(self.feat, borrow = True)
         shared_y.set_value(self.label, borrow = True)
+        self.cur_frame_num = read_frames
 
-        if self.sentence_index >= self.num_sentences and len(self.feat_buffer) == 0:
+        if self.sentence_index >= self.num_sentences and self.feat_buffer is None:
             # move on to the next pfile
             self.cur_pfile_index += 1
             if self.cur_pfile_index >= len(self.pfile_path_list):

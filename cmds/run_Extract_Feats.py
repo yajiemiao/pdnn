@@ -1,4 +1,5 @@
 # Copyright 2014    Yajie Miao    Carnegie Mellon University
+#           2015    Yun Wang      Carnegie Mellon University
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -75,7 +76,7 @@ if __name__ == '__main__':
     log('> ... getting the feat-extraction function')
     extract_func = model.build_extract_feat_function(layer_index)
 
-    output_mat = None  # store the features for all the data in memory. TODO: output the features in a streaming mode
+    output_mats = []    # store the features for all the data in memory. TODO: output the features in a streaming mode
     log('> ... generating features from the specified layer')
     while (not cfg.test_sets.is_finish()):  # loop over the data
         cfg.test_sets.load_next_partition(cfg.test_xy)
@@ -85,10 +86,9 @@ if __name__ == '__main__':
             start_index = batch_index * batch_size
             end_index = min((batch_index+1) * batch_size, cfg.test_sets.cur_frame_num)  # the residue may be smaller than a mini-batch
             output = extract_func(cfg.test_x.get_value()[start_index:end_index])
-            if output_mat is None:
-                output_mat = output
-            else:
-                output_mat = numpy.concatenate((output_mat, output)) # this is not efficient
+            output_mats.append(output)
+
+    output_mat = numpy.concatenate(output_mats)
 
     # output the feature representations using pickle
     f = smart_open(output_file, 'wb')
