@@ -14,9 +14,20 @@
 # limitations under the License.
 
 import os.path
-import gzip
-import bz2
 import numpy
+
+# Prepare readers for compressed files
+readers = {}
+try:
+    import gzip
+    readers['.gz'] = gzip.GzipFile
+except ImportError:
+    pass
+try:
+    import bz2
+    readers['.bz2'] = bz2.BZ2File
+except ImportError:
+    pass
 
 def smart_open(filename, mode = 'rb', *args, **kwargs):
     '''
@@ -25,8 +36,9 @@ def smart_open(filename, mode = 'rb', *args, **kwargs):
         automatically;
       * If the file is to be read and does not exist, corresponding files with
         a ".gz" or ".bz2" extension will be attempted.
+    (The Python packages "gzip" and "bz2" must be installed to deal with the
+        corresponding extensions)
     '''
-    readers = {'.gz': gzip.GzipFile, '.bz2': bz2.BZ2File}
     if 'r' in mode and not os.path.exists(filename):
         for ext in readers:
             if os.path.exists(filename + ext):
