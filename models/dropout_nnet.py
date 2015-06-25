@@ -140,7 +140,7 @@ class DNN_Dropout(object):
                 self.finetune_cost += self.l1_reg * (abs(W).sum())
 
         if self.l2_reg is not None:
-            for i in xrange(self.n_layers):
+            for i in xrange(self.hidden_layers_number):
                 W = self.layers[i].W
                 self.finetune_cost += self.l2_reg * T.sqr(W).sum()
 
