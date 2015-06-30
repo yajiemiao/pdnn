@@ -80,7 +80,7 @@ if __name__ == '__main__':
     log('> ... generating features from the specified layer')
     while (not cfg.test_sets.is_finish()):  # loop over the data
         cfg.test_sets.load_next_partition(cfg.test_xy)
-        batch_num = int(math.ceil(cfg.test_sets.cur_frame_num / batch_size))
+        batch_num = int(math.ceil(1.0 * cfg.test_sets.cur_frame_num / batch_size))
 
         for batch_index in xrange(batch_num):  # loop over mini-batches
             start_index = batch_index * batch_size
