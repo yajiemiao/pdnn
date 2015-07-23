@@ -43,9 +43,16 @@ def array_2_string(array):
     return str_out.getvalue()
 
 # convert a string to an array
+#def string_2_array(string):
+#    str_in = StringIO(string)
+#    return np.loadtxt(str_in)
+
 def string_2_array(string):
     str_in = StringIO(string)
-    return np.loadtxt(str_in)
+    array_tmp = np.loadtxt(str_in)
+    if len(array_tmp.shape) == 0:
+        return np.array([array_tmp])
+    return array_tmp
 
 def _nnet2file(layers, set_layer_num = -1, filename='nnet.out', start_layer = 0, input_factor = 0.0, factor=[]):
     n_layers = len(layers)
@@ -103,14 +110,16 @@ def _file2nnet(layers, set_layer_num = -1, filename='nnet.in',  factor=1.0):
         dict_a = 'W' + str(i)
         layer = layers[i]
         if layer.type == 'fc':
-            layer.W.set_value(factor * np.asarray(string_2_array(nnet_dict[dict_a]), dtype=theano.config.floatX))
+            mat_shape = layer.W.get_value().shape
+            layer.W.set_value(factor * np.asarray(string_2_array(nnet_dict[dict_a]), dtype=theano.config.floatX).reshape(mat_shape))
         elif layer.type == 'conv':
             filter_shape = layer.filter_shape
             W_array = layer.W.get_value()
             for next_X in xrange(filter_shape[0]):
                 for this_X in xrange(filter_shape[1]):
                     new_dict_a = dict_a + ' ' + str(next_X) + ' ' + str(this_X)
-                    W_array[next_X, this_X, :, :] = factor * np.asarray(string_2_array(nnet_dict[new_dict_a]), dtype=theano.config.floatX)
+                    mat_shape = W_array[next_X, this_X, :, :].shape
+                    W_array[next_X, this_X, :, :] = factor * np.asarray(string_2_array(nnet_dict[new_dict_a]), dtype=theano.config.floatX).reshape(mat_shape)
             layer.W.set_value(W_array)
         dict_a = 'b' + str(i)
         layer.b.set_value(np.asarray(string_2_array(nnet_dict[dict_a]), dtype=theano.config.floatX))
