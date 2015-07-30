@@ -17,7 +17,7 @@ import theano
 import theano.tensor as T
 from io_func.data_io import read_data_args, read_dataset
 from learn_rates import LearningRateExpDecay
-from utils import parse_lrate, parse_activation, parse_conv_spec, activation_to_txt, string_2_bool
+from utils import parse_lrate, parse_activation, parse_conv_spec, activation_to_txt, string2bool
 
 
 class SdAConfig():

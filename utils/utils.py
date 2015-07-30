@@ -18,8 +18,8 @@ import theano.tensor as T
 from learn_rates import LearningRateConstant, LearningRateExpDecay, LearningMinLrate, LearningFixedLrate
 from io_func import smart_open
 
-def string_2_bool(string):
-    return len(string) > 0 and string[0] in 'TtYy'      # True, true, Yes, yes
+def string2bool(string):
+    return len(string) > 0 and string[0] in 'TtYy1'     # True, true, Yes, yes, 1
 
 def parse_arguments(arg_elements):
     args = {}

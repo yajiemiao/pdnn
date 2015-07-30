@@ -22,7 +22,7 @@ import glob
 import numpy
 import theano
 import theano.tensor as T
-from utils.utils import string_2_bool, parse_ignore_label, parse_map_label
+from utils.utils import string2bool, parse_ignore_label, parse_map_label
 from pfile_io import PfileDataRead, PfileDataReadStream
 from pickle_io import PickleDataRead
 from kaldi_io import KaldiDataRead
@@ -57,9 +57,9 @@ def read_data_args(data_spec):
         if key == 'partition':
             dataset_args['partition'] = 1024 * 1024 * int(value.replace('m',''))
         elif key == 'stream':
-            dataset_args['stream'] = string_2_bool(value) # not supported for now
+            dataset_args['stream'] = string2bool(value) # not supported for now
         elif key == 'random':
-            dataset_args['random'] = string_2_bool(value)
+            dataset_args['random'] = string2bool(value)
         elif key == 'label':
             dataset_args['label'] = value
         elif key == 'lcxt':

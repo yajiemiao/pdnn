@@ -31,7 +31,7 @@ from io_func.model_io import _file2nnet, log
 from io_func.kaldi_feat import KaldiReadIn, KaldiWriteOut
 
 from models.cnn import CNN_Forward
-from utils.utils import parse_arguments, string_2_bool
+from utils.utils import parse_arguments, string2bool
 
 if __name__ == '__main__':
 
@@ -60,7 +60,7 @@ if __name__ == '__main__':
     # whether to use the fast mode
     use_fast = cfg.use_fast
     if arguments.has_key('use_fast'):
-        use_fast = string_2_bool(arguments['use_fast'])
+        use_fast = string2bool(arguments['use_fast'])
 
     kaldiread = KaldiReadIn(in_scp_file)
     kaldiwrite = KaldiWriteOut(out_ark_file)

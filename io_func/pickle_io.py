@@ -22,7 +22,7 @@ import glob
 import numpy
 import theano
 import theano.tensor as T
-from utils.utils import string_2_bool
+from utils.utils import string2bool
 from model_io import log
 from io_func import smart_open, preprocess_feature_and_label, shuffle_feature_and_label
 

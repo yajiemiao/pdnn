@@ -31,7 +31,7 @@ from models.cnn import CNN
 
 from io_func import smart_open
 from io_func.model_io import _file2nnet, log
-from utils.utils import parse_arguments
+from utils.utils import parse_arguments, string2bool
 from utils.network_config import NetworkConfig
 
 if __name__ == '__main__':
@@ -53,6 +53,7 @@ if __name__ == '__main__':
     output_file = arguments['output_file']
     layer_index = int(arguments['layer_index'])
     batch_size = float(arguments['batch_size'])
+    argmax = arguments.has_key('argmax') and string2bool(arguments['argmax'])
 
     # load network configuration and set up the model
     log('> ... setting up the model and loading parameters')
@@ -89,6 +90,8 @@ if __name__ == '__main__':
             output_mats.append(output)
 
     output_mat = numpy.concatenate(output_mats)
+    if argmax:
+        output_mat = output_mat.argmax(axis = 1)
 
     # output the feature representations using pickle
     f = smart_open(output_file, 'wb')
