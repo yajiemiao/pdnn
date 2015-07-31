@@ -15,7 +15,7 @@
 # limitations under the License.
 
 import theano.tensor as T
-from learn_rates import LearningRateConstant, LearningRateExpDecay, LearningMinLrate, LearningFixedLrate
+from learn_rates import LearningRateConstant, LearningRateExpDecay, LearningMinLrate, LearningFixedLrate, LearningRateAdaptive
 from io_func import smart_open
 
 def string2bool(string):
@@ -98,6 +98,20 @@ def parse_lrate(lrate_string):
                                  decay_start_epoch = int(values[0]),
                                  stop_after_deday_epoch = int(values[1]),
                                  init_error = 100)
+        return lrate
+
+    # 'A:0.1:1.00,1.05:1.04,0.7:1.00,6:100'
+    if elements[0] == 'A':  # Adaptive
+        if len(elements) != 6:
+            return None
+        lrate = LearningRateAdaptive(lr_init = float(elements[1]),
+                                     thres_inc = float(elements[2].split(',')[0]),
+                                     factor_inc = float(elements[2].split(',')[1]),
+                                     thres_dec = float(elements[3].split(',')[0]),
+                                     factor_dec = float(elements[3].split(',')[1]),
+                                     thres_fail = float(elements[4].split(',')[0]),
+                                     max_fail = float(elements[4].split(',')[1]),
+                                     max_epoch = int(elements[5]))
         return lrate
 
 def parse_conv_spec(conv_spec, batch_size):

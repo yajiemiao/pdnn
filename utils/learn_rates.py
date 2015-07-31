@@ -182,6 +182,49 @@ class LearningFixedLrate(LearningRate):
         self.epoch += 1
         return self.rate
 
+class LearningRateAdaptive(LearningRate):
+
+    def __init__(self, lr_init = 0.08,
+                 thres_inc = 1.00, factor_inc = 1.05,
+                 thres_dec = 1.04, factor_dec = 0.7,
+                 thres_fail = 1.00, max_fail = 6,
+                 max_epoch = 100):
+
+        self.rate = lr_init
+        self.thres_inc = thres_inc
+        self.factor_inc = factor_inc
+        self.thres_dec = thres_dec
+        self.factor_dec = factor_dec
+        self.thres_fail = thres_fail
+        self.max_fail = max_fail
+        self.max_epoch = max_epoch
+
+        self.epoch = 1
+        self.prev_error = None
+        self.fails = 0
+
+    def get_rate(self):
+        return self.rate
+
+    def get_next_rate(self, current_error):
+        if self.epoch >= self.max_epoch:
+            self.rate = 0.0
+        elif self.prev_error is not None:
+            if current_error < self.prev_error * self.thres_inc:
+                self.rate *= self.factor_inc
+            elif current_error >= self.prev_error * self.thres_dec:
+                self.rate *= self.factor_dec
+            if current_error >= self.prev_error * self.thres_fail:
+                self.fails += 1
+                if self.fails >= self.max_fail:
+                    self.rate = 0.0
+            else:
+                self.fails = 0
+
+        self.epoch += 1
+        self.prev_error = current_error
+        return self.rate
+
 
 # save and load the learning rate class
 def _lrate2file(lrate, filename='file.out'):
