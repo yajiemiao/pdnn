@@ -109,9 +109,9 @@ class KaldiDataRead(object):
             # allocate the feat matrix according to the specified partition size
             self.max_frame_num = self.read_opts['partition'] / (self.feat_dim * 4)
             self.feats = numpy.zeros((self.max_frame_num, self.feat_dim), dtype = theano.config.floatX)
+            self.labels = numpy.zeros(self.max_frame_num, dtype = numpy.int32)
             if self.ali_provided:
                 self.read_alignment()
-                self.labels = numpy.zeros(self.max_frame_num, dtype = numpy.int32)
 
         self.end_reading = False
         self.feat_buffer = None
@@ -126,15 +126,13 @@ class KaldiDataRead(object):
         else:   # An utterance hasn't been completely consumed yet
             read_frame_num = min(self.max_frame_num, len(self.feat_buffer))
             self.feats[0:read_frame_num] = self.feat_buffer[0:read_frame_num]
-            if self.ali_provided:
-                self.labels[0:read_frame_num] = self.label_buffer[0:read_frame_num]
+            self.labels[0:read_frame_num] = self.label_buffer[0:read_frame_num]
             if read_frame_num == len(self.feat_buffer):
                 self.feat_buffer = None
                 self.label_buffer = None
             else:
                 self.feat_buffer = self.feat_buffer[read_frame_num:]
-                if self.ali_provided:
-                    self.label_buffer = self.label_buffer[read_frame_num:]
+                self.label_buffer = self.label_buffer[read_frame_num:]
 
         while read_frame_num < self.max_frame_num:
             utt_id, utt_mat = self.read_next_utt()
@@ -150,7 +148,7 @@ class KaldiDataRead(object):
                 if len(ali_utt) != rows:
                     continue
             else:
-                ali_utt = None
+                ali_utt = numpy.zeros(rows, dtype = numpy.int32)
 
             utt_mat, ali_utt = preprocess_feature_and_label(utt_mat, ali_utt, self.read_opts)
             rows = len(utt_mat)
@@ -160,24 +158,22 @@ class KaldiDataRead(object):
                 rows = self.max_frame_num - read_frame_num
                 self.feat_buffer = utt_mat[rows:]
                 utt_mat = utt_mat[:rows]
-                if self.ali_provided:
-                    self.label_buffer = ali_utt[rows:]
-                    ali_utt = ali_utt[:rows]
+                self.label_buffer = ali_utt[rows:]
+                ali_utt = ali_utt[:rows]
 
             self.feats[read_frame_num:(read_frame_num + rows)] = utt_mat
-            if self.ali_provided:
-                self.labels[read_frame_num:(read_frame_num + rows)] = ali_utt
+            self.labels[read_frame_num:(read_frame_num + rows)] = ali_utt
             read_frame_num += rows
 
         if self.read_opts['random']:
             shuffle_feature_and_label(self.feats[0:read_frame_num], self.labels[0:read_frame_num])
 
         shared_x.set_value(self.feats[0:read_frame_num], borrow=True)
-        if self.ali_provided:
-            shared_y.set_value(self.labels[0:read_frame_num], borrow=True)
+        shared_y.set_value(self.labels[0:read_frame_num], borrow=True)
         self.cur_frame_num = read_frame_num
 
     def make_shared(self):
+
         shared_x = theano.shared(self.feats, name = 'x', borrow = True)
         shared_y = theano.shared(self.labels, name = 'y', borrow = True)
         return shared_x, shared_y
