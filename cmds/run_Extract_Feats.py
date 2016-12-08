@@ -52,7 +52,7 @@ if __name__ == '__main__':
     nnet_cfg = arguments['nnet_cfg']
     output_file = arguments['output_file']
     layer_index = int(arguments['layer_index'])
-    batch_size = float(arguments['batch_size'])
+    batch_size = int(arguments['batch_size'])
     argmax = arguments.has_key('argmax') and string2bool(arguments['argmax'])
 
     # load network configuration and set up the model
